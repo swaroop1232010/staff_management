@@ -330,69 +330,105 @@ export default function AdminCustomerList({ onEdit }: AdminCustomerListProps) {
           </div>
         </div>
         
-        {/* Search and Filters */}
-        <div className="mb-4 flex flex-wrap gap-4 items-center">
-          <input
-            type="text"
-            placeholder="Search customers by name, contact, or email..."
-            className="input-field flex-1 min-w-64"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-          <select
-            value={selectedStaff}
-            onChange={(e) => setSelectedStaff(e.target.value)}
-            className="input-field min-w-48"
-          >
-            <option value="">All Staff</option>
-            {staff.map((member) => (
-              <option key={member.id} value={member.name}>
-                {member.name} - {member.position}
-              </option>
-            ))}
-          </select>
-          <input
-            type="date"
-            placeholder="Start Date"
-            value={filters.startDate}
-            onChange={(e) => handleFilterChange('startDate', e.target.value)}
-            className="input-field min-w-40"
-          />
-          <input
-            type="date"
-            placeholder="End Date"
-            value={filters.endDate}
-            onChange={(e) => handleFilterChange('endDate', e.target.value)}
-            className="input-field min-w-40"
-          />
-          <select
-            value={filters.paymentType}
-            onChange={(e) => handleFilterChange('paymentType', e.target.value)}
-            className="input-field min-w-40"
-          >
-            <option value="">All Payment Types</option>
-            <option value="CASH">Cash</option>
-            <option value="UPI">UPI</option>
-            <option value="CARD">Card</option>
-          </select>
-          <select
-            value={filters.service}
-            onChange={(e) => handleFilterChange('service', e.target.value)}
-            className="input-field min-w-48"
-          >
-            <option value="">All Services</option>
-            {getUniqueServices().map((service) => (
-              <option key={service} value={service}>
-                {service}
-              </option>
-            ))}
-          </select>
-          <button
-            onClick={clearFilters}
-            className="btn-secondary text-red-600 hover:text-red-800"
-          >
-            Clear All
-          </button>
+        {/* Search Bar */}
+        <div className="mb-6">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search customers by name, contact, or email..."
+              className="input-field w-full pl-10"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+        </div>
+
+        {/* Filter Controls */}
+        <div className="mb-6 bg-gray-50 rounded-lg p-4">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-900">Filters</h3>
+            <button
+              onClick={clearFilters}
+              className="text-sm text-red-600 hover:text-red-800 font-medium"
+            >
+              Clear All Filters
+            </button>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+            {/* Staff Filter */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Staff Member</label>
+              <select
+                value={selectedStaff}
+                onChange={(e) => setSelectedStaff(e.target.value)}
+                className="input-field w-full"
+              >
+                <option value="">All Staff</option>
+                {staff.map((member) => (
+                  <option key={member.id} value={member.name}>
+                    {member.name} - {member.position}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Date Range */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+              <input
+                type="date"
+                value={filters.startDate}
+                onChange={(e) => handleFilterChange('startDate', e.target.value)}
+                className="input-field w-full"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
+              <input
+                type="date"
+                value={filters.endDate}
+                onChange={(e) => handleFilterChange('endDate', e.target.value)}
+                className="input-field w-full"
+              />
+            </div>
+
+            {/* Payment Type */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Payment Type</label>
+              <select
+                value={filters.paymentType}
+                onChange={(e) => handleFilterChange('paymentType', e.target.value)}
+                className="input-field w-full"
+              >
+                <option value="">All Payment Types</option>
+                <option value="CASH">Cash</option>
+                <option value="UPI">UPI</option>
+                <option value="CARD">Card</option>
+              </select>
+            </div>
+
+            {/* Service */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Service</label>
+              <select
+                value={filters.service}
+                onChange={(e) => handleFilterChange('service', e.target.value)}
+                className="input-field w-full"
+              >
+                <option value="">All Services</option>
+                {getUniqueServices().map((service) => (
+                  <option key={service} value={service}>
+                    {service}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
         </div>
 
         {/* Select All Controls */}
