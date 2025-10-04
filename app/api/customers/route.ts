@@ -35,6 +35,27 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
 
+  // Validate required fields
+  if (!data.name || !data.contact || !data.amount || !data.paymentType) {
+    return NextResponse.json({ 
+      error: 'Missing required fields: name, contact, amount, and paymentType are required' 
+    }, { status: 400 })
+  }
+
+  // Validate contact number format (exactly 10 digits)
+  if (!/^[0-9]{10}$/.test(data.contact)) {
+    return NextResponse.json({ 
+      error: 'Contact number must be exactly 10 digits' 
+    }, { status: 400 })
+  }
+
+  // Validate services array
+  if (!Array.isArray(data.services) || data.services.length === 0) {
+    return NextResponse.json({ 
+      error: 'Services must be a non-empty array' 
+    }, { status: 400 })
+  }
+
   try {
     // Try to use real database first
     const customer = await prisma.customer.create({

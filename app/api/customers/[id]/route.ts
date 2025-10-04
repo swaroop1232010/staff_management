@@ -50,6 +50,13 @@ export async function PUT(
     }, { status: 400 })
   }
 
+  // Validate contact number format (exactly 10 digits)
+  if (!/^[0-9]{10}$/.test(data.contact)) {
+    return NextResponse.json({ 
+      error: 'Contact number must be exactly 10 digits' 
+    }, { status: 400 })
+  }
+
   // Validate services array
   if (!Array.isArray(data.services) || data.services.length === 0) {
     return NextResponse.json({ 

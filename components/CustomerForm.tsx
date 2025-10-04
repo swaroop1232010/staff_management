@@ -75,6 +75,7 @@ export default function CustomerForm({ onSuccess, initialData }: CustomerFormPro
           [name]: digitsOnly
         }))
       }
+      // Prevent any input beyond 10 digits
       return
     }
     
@@ -211,6 +212,16 @@ export default function CustomerForm({ onSuccess, initialData }: CustomerFormPro
               value={formData.contact}
               onChange={handleInputChange}
               onWheel={handleWheel}
+              onKeyDown={(e) => {
+                // Prevent non-digit keys except backspace, delete, tab, escape, enter
+                if (!/[0-9]/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                  e.preventDefault()
+                }
+                // Prevent input if already 10 digits (except for backspace/delete)
+                if (formData.contact.length >= 10 && !['Backspace', 'Delete'].includes(e.key)) {
+                  e.preventDefault()
+                }
+              }}
               placeholder="Enter 10-digit contact number"
             />
             {formData.contact && formData.contact.length < 10 && (
