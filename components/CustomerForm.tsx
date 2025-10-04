@@ -51,10 +51,30 @@ export default function CustomerForm({ onSuccess, initialData }: CustomerFormPro
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
+    
+    // Validate discount percentage (0-100)
+    if (name === 'discount') {
+      const numValue = parseFloat(value)
+      if (value === '' || (numValue >= 0 && numValue <= 100)) {
+        setFormData(prev => ({
+          ...prev,
+          [name]: value
+        }))
+      }
+      return
+    }
+    
     setFormData(prev => ({
       ...prev,
       [name]: value
     }))
+  }
+
+  // Prevent scrolling on number inputs
+  const handleWheel = (e: React.WheelEvent<HTMLInputElement>) => {
+    if (e.currentTarget.type === 'number') {
+      e.currentTarget.blur()
+    }
   }
 
   const addService = () => {
@@ -210,9 +230,11 @@ export default function CustomerForm({ onSuccess, initialData }: CustomerFormPro
               name="amount"
               required
               step="0.01"
+              min="0"
               className="input-field"
               value={formData.amount}
               onChange={handleInputChange}
+              onWheel={handleWheel}
               placeholder="Enter amount"
             />
           </div>
@@ -226,10 +248,13 @@ export default function CustomerForm({ onSuccess, initialData }: CustomerFormPro
                 type="number"
                 name="discount"
                 step="0.01"
+                min="0"
+                max="100"
                 className="input-field flex-1"
                 value={formData.discount}
                 onChange={handleInputChange}
-                placeholder="Enter discount percentage"
+                onWheel={handleWheel}
+                placeholder="Enter discount percentage (0-100)"
               />
               <div className="flex items-center px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 font-medium">
                 %
@@ -239,6 +264,11 @@ export default function CustomerForm({ onSuccess, initialData }: CustomerFormPro
               <div className="text-xs text-gray-500 mt-1">
                 Discount: ₹{(parseFloat(formData.amount) * parseFloat(formData.discount) / 100).toFixed(2)} | 
                 Final Amount: ₹{(parseFloat(formData.amount) - (parseFloat(formData.amount) * parseFloat(formData.discount) / 100)).toFixed(2)}
+              </div>
+            )}
+            {formData.discount && parseFloat(formData.discount) > 100 && (
+              <div className="text-xs text-red-500 mt-1">
+                Discount cannot exceed 100%
               </div>
             )}
           </div>
