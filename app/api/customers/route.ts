@@ -25,9 +25,14 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  let data
   try {
-    const data = await request.json()
-    
+    data = await request.json()
+  } catch (parseError) {
+    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
+  }
+
+  try {
     // Try to use real database first
     const customer = await prisma.customer.create({
       data: {
@@ -47,8 +52,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(customer)
   } catch (error) {
     // Fallback to mock data if database is not available
-    const data = await request.json()
-    
     const newCustomer = {
       id: generateCUID(),
       name: data.name,
