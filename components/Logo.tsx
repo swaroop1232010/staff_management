@@ -35,7 +35,7 @@ export default function Logo({ size = 'md', showText = true }: LogoProps) {
       {/* Logo image */}
       <div className={`${sizeClasses[size]} flex-shrink-0`}>
         <Image
-          src="/uploads/logo.png"
+          src="/logo.png"
           alt="Swasthik Logo"
           width={imageSizes[size]}
           height={imageSizes[size]}
