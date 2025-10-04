@@ -36,9 +36,13 @@ export default function StaffPage() {
     return null;
   }
 
+  const handleNavigation = (path: string) => {
+    router.push(path)
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
-      {user && <Header user={user} />}
+      {user && <Header user={user} onNavigate={handleNavigation} />}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <StaffList />
       </div>

@@ -38,7 +38,22 @@ body {
   }
   
   .input-field {
-    @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
+    @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900;
+  }
+  
+  /* Fix mobile input text color */
+  input, textarea, select {
+    color: #111827 !important;
+    -webkit-text-fill-color: #111827 !important;
+  }
+  
+  /* Fix autofill styling */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 30px white inset !important;
+    -webkit-text-fill-color: #111827 !important;
   }
   
   .card {

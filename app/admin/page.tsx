@@ -42,9 +42,18 @@ export default function AdminPage() {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>
   }
 
+  const handleNavigation = (path: string) => {
+    // If in form mode, exit form mode first
+    if (showForm) {
+      setShowForm(false)
+      setEditingCustomer(null)
+    }
+    router.push(path)
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header user={user} />
+      <Header user={user} onNavigate={handleNavigation} />
       
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">

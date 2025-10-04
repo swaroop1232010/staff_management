@@ -21,9 +21,16 @@ export default function StaffList() {
   const [showForm, setShowForm] = useState(false);
   const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
   const [selectedStaff, setSelectedStaff] = useState<string[]>([]);
+  const [user, setUser] = useState<{ role: string } | null>(null);
 
   useEffect(() => {
     fetchStaff();
+    // Get user role from localStorage
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      const parsedUser = JSON.parse(userData);
+      setUser(parsedUser);
+    }
   }, []);
 
   const fetchStaff = async () => {
@@ -44,6 +51,10 @@ export default function StaffList() {
   };
 
   const handleDelete = async (id: string) => {
+    if (user?.role !== 'SUPERADMIN') {
+      toast.error('Only administrators can delete staff members');
+      return;
+    }
     if (!confirm('Are you sure you want to delete this staff member?')) {
       return;
     }
@@ -67,6 +78,10 @@ export default function StaffList() {
   };
 
   const handleBulkDelete = async () => {
+    if (user?.role !== 'SUPERADMIN') {
+      toast.error('Only administrators can delete staff members');
+      return;
+    }
     if (selectedStaff.length === 0) {
       toast.error('Please select staff members to delete');
       return;
@@ -114,11 +129,19 @@ export default function StaffList() {
   };
 
   const handleEdit = (staff: Staff) => {
+    if (user?.role !== 'SUPERADMIN') {
+      toast.error('Only administrators can edit staff members');
+      return;
+    }
     setEditingStaff(staff);
     setShowForm(true);
   };
 
   const handleAddNew = () => {
+    if (user?.role !== 'SUPERADMIN') {
+      toast.error('Only administrators can add staff members');
+      return;
+    }
     setEditingStaff(null);
     setShowForm(true);
   };
@@ -148,15 +171,17 @@ export default function StaffList() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-800">Staff Management</h1>
-        <button
-          onClick={handleAddNew}
-          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
-        >
-          Add New Staff
-        </button>
+        {user?.role === 'SUPERADMIN' && (
+          <button
+            onClick={handleAddNew}
+            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
+          >
+            Add New Staff
+          </button>
+        )}
       </div>
 
-      {selectedStaff.length > 0 && (
+      {selectedStaff.length > 0 && user?.role === 'SUPERADMIN' && (
         <div className="bg-red-50 border border-red-200 rounded-md p-4">
           <div className="flex justify-between items-center">
             <span className="text-red-700">
@@ -177,14 +202,16 @@ export default function StaffList() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left">
-                  <input
-                    type="checkbox"
-                    checked={selectedStaff.length === staff.length && staff.length > 0}
-                    onChange={handleSelectAll}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  />
-                </th>
+                {user?.role === 'SUPERADMIN' && (
+                  <th className="px-6 py-3 text-left">
+                    <input
+                      type="checkbox"
+                      checked={selectedStaff.length === staff.length && staff.length > 0}
+                      onChange={handleSelectAll}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                  </th>
+                )}
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Name
                 </th>
@@ -212,14 +239,16 @@ export default function StaffList() {
               ) : (
                 staff.map((member) => (
                   <tr key={member.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
-                      <input
-                        type="checkbox"
-                        checked={selectedStaff.includes(member.id)}
-                        onChange={() => handleSelectStaff(member.id)}
-                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                      />
-                    </td>
+                    {user?.role === 'SUPERADMIN' && (
+                      <td className="px-6 py-4">
+                        <input
+                          type="checkbox"
+                          checked={selectedStaff.includes(member.id)}
+                          onChange={() => handleSelectStaff(member.id)}
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                      </td>
+                    )}
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">{member.name}</div>
                     </td>
@@ -243,18 +272,24 @@ export default function StaffList() {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                      <button
-                        onClick={() => handleEdit(member)}
-                        className="text-blue-600 hover:text-blue-900"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDelete(member.id)}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        Delete
-                      </button>
+                      {user?.role === 'SUPERADMIN' ? (
+                        <>
+                          <button
+                            onClick={() => handleEdit(member)}
+                            className="text-blue-600 hover:text-blue-900"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDelete(member.id)}
+                            className="text-red-600 hover:text-red-900"
+                          >
+                            Delete
+                          </button>
+                        </>
+                      ) : (
+                        <span className="text-gray-400">View Only</span>
+                      )}
                     </td>
                   </tr>
                 ))
