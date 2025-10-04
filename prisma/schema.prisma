@@ -7,8 +7,8 @@ generator client {
 
 // Database Configuration - Change based on your database choice
 datasource db {
-  provider = "sqlite"  // Change to "mysql", "postgresql", or "mongodb"
-  url      = "file:./prisma/dev.db"
+  provider = "postgresql"  // Changed to PostgreSQL for Vercel deployment
+  url      = env("DATABASE_URL")
 }
 
 // For MySQL, change provider to "mysql"
