@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subDays, subWeeks, subMonths } from 'date-fns'
+import Header from '@/components/Header'
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic'
@@ -25,6 +26,15 @@ export default function ReportsPage() {
     start: format(new Date(), 'yyyy-MM-dd'),
     end: format(new Date(), 'yyyy-MM-dd')
   })
+  const [user, setUser] = useState<any>(null)
+
+  useEffect(() => {
+    // Get user from localStorage
+    const userData = localStorage.getItem('user')
+    if (userData) {
+      setUser(JSON.parse(userData))
+    }
+  }, [])
 
   useEffect(() => {
     fetchReportData()
@@ -124,9 +134,10 @@ export default function ReportsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <Header user={user} />
       <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
-          {/* Header */}
+          {/* Page Header */}
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900">Revenue Reports</h1>
             <p className="mt-2 text-gray-600">Analyze your salon's performance and revenue</p>
@@ -296,65 +307,125 @@ export default function ReportsPage() {
                 {/* Service Breakdown */}
                 <div className="bg-white rounded-lg shadow p-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Revenue by Service</h3>
-                  <div className="space-y-3">
-                    {reportData.serviceBreakdown.map((service, index) => (
-                      <div key={index} className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">{service.service}</span>
-                        <div className="text-right">
-                          <span className="text-sm font-semibold text-gray-900">₹{service.amount.toLocaleString()}</span>
-                          <span className="text-xs text-gray-500 ml-2">({service.count} customers)</span>
-                        </div>
+                  {reportData.serviceBreakdown.length > 0 ? (
+                    <>
+                      <div className="grid grid-cols-3 gap-4 mb-3 pb-2 border-b border-gray-200">
+                        <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">Service</div>
+                        <div className="text-xs font-medium text-gray-500 uppercase tracking-wider text-right">Revenue</div>
+                        <div className="text-xs font-medium text-gray-500 uppercase tracking-wider text-right">Customers</div>
                       </div>
-                    ))}
-                  </div>
+                      <div className="space-y-3">
+                        {reportData.serviceBreakdown.map((service, index) => (
+                          <div key={index} className="grid grid-cols-3 gap-4 items-center">
+                            <span className="text-sm text-gray-900 font-medium">{service.service}</span>
+                            <div className="text-right">
+                              <span className="text-sm font-semibold text-gray-900">₹{service.amount.toLocaleString()}</span>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-sm text-gray-600">{service.count}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      <p>No service data available for the selected period</p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Staff Breakdown */}
                 <div className="bg-white rounded-lg shadow p-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Revenue by Staff</h3>
-                  <div className="space-y-3">
-                    {reportData.staffBreakdown.map((staff, index) => (
-                      <div key={index} className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">{staff.staff}</span>
-                        <div className="text-right">
-                          <span className="text-sm font-semibold text-gray-900">₹{staff.amount.toLocaleString()}</span>
-                          <span className="text-xs text-gray-500 ml-2">({staff.count} customers)</span>
-                        </div>
+                  {reportData.staffBreakdown.length > 0 ? (
+                    <>
+                      <div className="grid grid-cols-3 gap-4 mb-3 pb-2 border-b border-gray-200">
+                        <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">Staff Member</div>
+                        <div className="text-xs font-medium text-gray-500 uppercase tracking-wider text-right">Revenue</div>
+                        <div className="text-xs font-medium text-gray-500 uppercase tracking-wider text-right">Customers</div>
                       </div>
-                    ))}
-                  </div>
+                      <div className="space-y-3">
+                        {reportData.staffBreakdown.map((staff, index) => (
+                          <div key={index} className="grid grid-cols-3 gap-4 items-center">
+                            <span className="text-sm text-gray-900 font-medium">{staff.staff}</span>
+                            <div className="text-right">
+                              <span className="text-sm font-semibold text-gray-900">₹{staff.amount.toLocaleString()}</span>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-sm text-gray-600">{staff.count}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      <p>No staff data available for the selected period</p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Payment Type Breakdown */}
                 <div className="bg-white rounded-lg shadow p-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Payment Methods</h3>
-                  <div className="space-y-3">
-                    {reportData.paymentTypeBreakdown.map((payment, index) => (
-                      <div key={index} className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">{payment.type}</span>
-                        <div className="text-right">
-                          <span className="text-sm font-semibold text-gray-900">₹{payment.amount.toLocaleString()}</span>
-                          <span className="text-xs text-gray-500 ml-2">({payment.count} transactions)</span>
-                        </div>
+                  {reportData.paymentTypeBreakdown.length > 0 ? (
+                    <>
+                      <div className="grid grid-cols-3 gap-4 mb-3 pb-2 border-b border-gray-200">
+                        <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">Payment Type</div>
+                        <div className="text-xs font-medium text-gray-500 uppercase tracking-wider text-right">Amount</div>
+                        <div className="text-xs font-medium text-gray-500 uppercase tracking-wider text-right">Transactions</div>
                       </div>
-                    ))}
-                  </div>
+                      <div className="space-y-3">
+                        {reportData.paymentTypeBreakdown.map((payment, index) => (
+                          <div key={index} className="grid grid-cols-3 gap-4 items-center">
+                            <span className="text-sm text-gray-900 font-medium">{payment.type}</span>
+                            <div className="text-right">
+                              <span className="text-sm font-semibold text-gray-900">₹{payment.amount.toLocaleString()}</span>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-sm text-gray-600">{payment.count}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      <p>No payment data available for the selected period</p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Daily Trend */}
                 <div className="bg-white rounded-lg shadow p-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Daily Trend</h3>
-                  <div className="space-y-2">
-                    {reportData.dailyData.slice(-7).map((day, index) => (
-                      <div key={index} className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">{format(new Date(day.date), 'MMM dd')}</span>
-                        <div className="text-right">
-                          <span className="text-sm font-semibold text-gray-900">₹{day.amount.toLocaleString()}</span>
-                          <span className="text-xs text-gray-500 ml-2">({day.customers} customers)</span>
-                        </div>
+                  {reportData.dailyData.length > 0 ? (
+                    <>
+                      <div className="grid grid-cols-3 gap-4 mb-3 pb-2 border-b border-gray-200">
+                        <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">Date</div>
+                        <div className="text-xs font-medium text-gray-500 uppercase tracking-wider text-right">Revenue</div>
+                        <div className="text-xs font-medium text-gray-500 uppercase tracking-wider text-right">Customers</div>
                       </div>
-                    ))}
-                  </div>
+                      <div className="space-y-2">
+                        {reportData.dailyData.slice(-7).map((day, index) => (
+                          <div key={index} className="grid grid-cols-3 gap-4 items-center">
+                            <span className="text-sm text-gray-900 font-medium">{format(new Date(day.date), 'MMM dd')}</span>
+                            <div className="text-right">
+                              <span className="text-sm font-semibold text-gray-900">₹{day.amount.toLocaleString()}</span>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-sm text-gray-600">{day.customers}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      <p>No daily data available for the selected period</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </>
