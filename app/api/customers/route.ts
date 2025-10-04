@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { mockCustomers } from '@/lib/mockData'
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic'
+
 // Simple CUID generator for mock data
 function generateCUID() {
   const timestamp = Date.now().toString(36)

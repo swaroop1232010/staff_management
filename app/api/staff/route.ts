@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
 import { sampleStaff } from '@/lib/sampleStaff';
 
 // GET /api/staff - Get all staff members

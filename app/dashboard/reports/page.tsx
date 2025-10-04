@@ -3,6 +3,9 @@
 import { useState, useEffect } from 'react'
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subDays, subWeeks, subMonths } from 'date-fns'
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic'
+
 interface ReportData {
   totalAmount: number
   totalCustomers: number
