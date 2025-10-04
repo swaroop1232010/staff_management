@@ -305,7 +305,7 @@ export default function CustomerList() {
           </div>
         </div>
         
-        {/* Search and Basic Filters */}
+        {/* Search and Filters */}
         <div className="mb-4 flex flex-wrap gap-4 items-center">
           <input
             type="text"
@@ -326,15 +326,42 @@ export default function CustomerList() {
               </option>
             ))}
           </select>
-          <button
-            onClick={() => setFilters(prev => ({ ...prev, showFilters: !prev.showFilters }))}
-            className="btn-secondary flex items-center space-x-2"
+          <input
+            type="date"
+            placeholder="Start Date"
+            value={filters.startDate}
+            onChange={(e) => handleFilterChange('startDate', e.target.value)}
+            className="input-field min-w-40"
+          />
+          <input
+            type="date"
+            placeholder="End Date"
+            value={filters.endDate}
+            onChange={(e) => handleFilterChange('endDate', e.target.value)}
+            className="input-field min-w-40"
+          />
+          <select
+            value={filters.paymentType}
+            onChange={(e) => handleFilterChange('paymentType', e.target.value)}
+            className="input-field min-w-40"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.207A1 1 0 013 6.5V4z" />
-            </svg>
-            <span>Filters</span>
-          </button>
+            <option value="">All Payment Types</option>
+            <option value="CASH">Cash</option>
+            <option value="UPI">UPI</option>
+            <option value="CARD">Card</option>
+          </select>
+          <select
+            value={filters.service}
+            onChange={(e) => handleFilterChange('service', e.target.value)}
+            className="input-field min-w-48"
+          >
+            <option value="">All Services</option>
+            {getUniqueServices().map((service) => (
+              <option key={service} value={service}>
+                {service}
+              </option>
+            ))}
+          </select>
           <button
             onClick={clearFilters}
             className="btn-secondary text-red-600 hover:text-red-800"
@@ -342,61 +369,6 @@ export default function CustomerList() {
             Clear All
           </button>
         </div>
-
-        {/* Advanced Filters */}
-        {filters.showFilters && (
-          <div className="mb-6 p-4 bg-gray-50 rounded-lg border">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Advanced Filters</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
-                <input
-                  type="date"
-                  value={filters.startDate}
-                  onChange={(e) => handleFilterChange('startDate', e.target.value)}
-                  className="input-field"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-                <input
-                  type="date"
-                  value={filters.endDate}
-                  onChange={(e) => handleFilterChange('endDate', e.target.value)}
-                  className="input-field"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Payment Type</label>
-                <select
-                  value={filters.paymentType}
-                  onChange={(e) => handleFilterChange('paymentType', e.target.value)}
-                  className="input-field"
-                >
-                  <option value="">All Payment Types</option>
-                  <option value="CASH">Cash</option>
-                  <option value="UPI">UPI</option>
-                  <option value="CARD">Card</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Service</label>
-                <select
-                  value={filters.service}
-                  onChange={(e) => handleFilterChange('service', e.target.value)}
-                  className="input-field"
-                >
-                  <option value="">All Services</option>
-                  {getUniqueServices().map((service) => (
-                    <option key={service} value={service}>
-                      {service}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Select All Controls */}
         {filteredCustomers.length > 0 && (
