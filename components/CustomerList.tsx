@@ -35,6 +35,19 @@ export default function CustomerList() {
   const [bulkDeleting, setBulkDeleting] = useState(false)
   const [staff, setStaff] = useState<Staff[]>([])
   const [selectedStaff, setSelectedStaff] = useState('')
+  
+  // New filter states
+  const [filters, setFilters] = useState({
+    startDate: '',
+    endDate: '',
+    paymentType: '',
+    service: '',
+    showFilters: false
+  })
+  
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage] = useState(10)
 
   useEffect(() => {
     fetchCustomers()
@@ -163,6 +176,20 @@ export default function CustomerList() {
     }
   }
 
+  // Get unique services for filter dropdown
+  const getUniqueServices = () => {
+    const services = new Set<string>()
+    customers.forEach(customer => {
+      try {
+        const customerServices = JSON.parse(customer.services)
+        customerServices.forEach((service: string) => services.add(service))
+      } catch (error) {
+        console.error('Error parsing services:', error)
+      }
+    })
+    return Array.from(services).sort()
+  }
+
   const filteredCustomers = customers.filter(customer => {
     const matchesSearch = customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       customer.contact.includes(searchTerm) ||
@@ -170,8 +197,54 @@ export default function CustomerList() {
     
     const matchesStaff = !selectedStaff || customer.serviceTakenBy === selectedStaff
     
-    return matchesSearch && matchesStaff
+    // Date filtering
+    const customerDate = new Date(customer.visitDate)
+    const matchesStartDate = !filters.startDate || customerDate >= new Date(filters.startDate)
+    const matchesEndDate = !filters.endDate || customerDate <= new Date(filters.endDate)
+    
+    // Payment type filtering
+    const matchesPaymentType = !filters.paymentType || customer.paymentType === filters.paymentType
+    
+    // Service filtering
+    let matchesService = true
+    if (filters.service) {
+      try {
+        const customerServices = JSON.parse(customer.services)
+        matchesService = customerServices.includes(filters.service)
+      } catch (error) {
+        matchesService = false
+      }
+    }
+    
+    return matchesSearch && matchesStaff && matchesStartDate && matchesEndDate && matchesPaymentType && matchesService
   })
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredCustomers.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const paginatedCustomers = filteredCustomers.slice(startIndex, endIndex)
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm, selectedStaff, filters])
+
+  const handleFilterChange = (key: string, value: string) => {
+    setFilters(prev => ({ ...prev, [key]: value }))
+  }
+
+  const clearFilters = () => {
+    setFilters({
+      startDate: '',
+      endDate: '',
+      paymentType: '',
+      service: '',
+      showFilters: false
+    })
+    setSearchTerm('')
+    setSelectedStaff('')
+  }
 
   if (loading) {
     return (
@@ -232,18 +305,19 @@ export default function CustomerList() {
           </div>
         </div>
         
-        <div className="mb-4 flex justify-between items-center space-x-4">
+        {/* Search and Basic Filters */}
+        <div className="mb-4 flex flex-wrap gap-4 items-center">
           <input
             type="text"
             placeholder="Search customers by name, contact, or email..."
-            className="input-field flex-1 max-w-md"
+            className="input-field flex-1 min-w-64"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
           <select
             value={selectedStaff}
             onChange={(e) => setSelectedStaff(e.target.value)}
-            className="input-field max-w-xs"
+            className="input-field min-w-48"
           >
             <option value="">All Staff</option>
             {staff.map((member) => (
@@ -252,25 +326,97 @@ export default function CustomerList() {
               </option>
             ))}
           </select>
-          {filteredCustomers.length > 0 && (
-            <div className="flex items-center space-x-2 ml-4">
-              <button
-                onClick={handleSelectAll}
-                className="text-sm text-primary-600 hover:text-primary-800 font-medium"
-              >
-                {selectedCustomers.length === filteredCustomers.length ? 'Deselect All' : 'Select All'}
-              </button>
-              {selectedCustomers.length > 0 && (
-                <button
-                  onClick={() => setSelectedCustomers([])}
-                  className="text-sm text-gray-500 hover:text-gray-700"
-                >
-                  Clear Selection
-                </button>
-              )}
-            </div>
-          )}
+          <button
+            onClick={() => setFilters(prev => ({ ...prev, showFilters: !prev.showFilters }))}
+            className="btn-secondary flex items-center space-x-2"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.207A1 1 0 013 6.5V4z" />
+            </svg>
+            <span>Filters</span>
+          </button>
+          <button
+            onClick={clearFilters}
+            className="btn-secondary text-red-600 hover:text-red-800"
+          >
+            Clear All
+          </button>
         </div>
+
+        {/* Advanced Filters */}
+        {filters.showFilters && (
+          <div className="mb-6 p-4 bg-gray-50 rounded-lg border">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Advanced Filters</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                <input
+                  type="date"
+                  value={filters.startDate}
+                  onChange={(e) => handleFilterChange('startDate', e.target.value)}
+                  className="input-field"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                <input
+                  type="date"
+                  value={filters.endDate}
+                  onChange={(e) => handleFilterChange('endDate', e.target.value)}
+                  className="input-field"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Payment Type</label>
+                <select
+                  value={filters.paymentType}
+                  onChange={(e) => handleFilterChange('paymentType', e.target.value)}
+                  className="input-field"
+                >
+                  <option value="">All Payment Types</option>
+                  <option value="CASH">Cash</option>
+                  <option value="UPI">UPI</option>
+                  <option value="CARD">Card</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Service</label>
+                <select
+                  value={filters.service}
+                  onChange={(e) => handleFilterChange('service', e.target.value)}
+                  className="input-field"
+                >
+                  <option value="">All Services</option>
+                  {getUniqueServices().map((service) => (
+                    <option key={service} value={service}>
+                      {service}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Select All Controls */}
+        {filteredCustomers.length > 0 && (
+          <div className="flex items-center space-x-2 ml-4 mb-4">
+            <button
+              onClick={handleSelectAll}
+              className="text-sm text-primary-600 hover:text-primary-800 font-medium"
+            >
+              {selectedCustomers.length === filteredCustomers.length ? 'Deselect All' : 'Select All'}
+            </button>
+            {selectedCustomers.length > 0 && (
+              <button
+                onClick={() => setSelectedCustomers([])}
+                className="text-sm text-gray-500 hover:text-gray-700"
+              >
+                Clear Selection
+              </button>
+            )}
+          </div>
+        )}
 
         {filteredCustomers.length === 0 ? (
           <div className="text-center py-12">
@@ -318,7 +464,7 @@ export default function CustomerList() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredCustomers.map((customer) => {
+                {paginatedCustomers.map((customer) => {
                   const services = JSON.parse(customer.services)
                   const discountAmount = customer.amount * customer.discount / 100
                   const finalAmount = customer.amount - discountAmount
@@ -417,6 +563,76 @@ export default function CustomerList() {
                 })}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* Pagination Controls */}
+        {filteredCustomers.length > 0 && totalPages > 1 && (
+          <div className="mt-6 flex items-center justify-between">
+            <div className="text-sm text-gray-700">
+              Showing {startIndex + 1} to {Math.min(endIndex, filteredCustomers.length)} of {filteredCustomers.length} customers
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setCurrentPage(1)}
+                disabled={currentPage === 1}
+                className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                First
+              </button>
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Previous
+              </button>
+              
+              {/* Page Numbers */}
+              <div className="flex space-x-1">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum
+                  if (totalPages <= 5) {
+                    pageNum = i + 1
+                  } else if (currentPage <= 3) {
+                    pageNum = i + 1
+                  } else if (currentPage >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i
+                  } else {
+                    pageNum = currentPage - 2 + i
+                  }
+                  
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={`px-3 py-1 text-sm border rounded-md ${
+                        currentPage === pageNum
+                          ? 'bg-primary-600 text-white border-primary-600'
+                          : 'border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  )
+                })}
+              </div>
+              
+              <button
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+              <button
+                onClick={() => setCurrentPage(totalPages)}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Last
+              </button>
+            </div>
           </div>
         )}
       </div>
