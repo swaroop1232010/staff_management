@@ -108,8 +108,11 @@ export async function GET(request: NextRequest) {
     // Daily data for trend
     const dailyData: { date: string; amount: number; customers: number }[] = []
     
-    if (timeFilter === 'daily') {
-      // Single day
+    // Check if start and end dates are the same day
+    const isSameDay = start.toDateString() === end.toDateString()
+    
+    if (timeFilter === 'daily' || isSameDay) {
+      // Single day - use all customers from the query
       const dayAmount = customers.reduce((sum, customer) => sum + customer.amount, 0)
       dailyData.push({
         date: format(start, 'yyyy-MM-dd'),
