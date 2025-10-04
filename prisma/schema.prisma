@@ -1,0 +1,61 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Database Configuration - Change based on your database choice
+datasource db {
+  provider = "sqlite"  // Change to "mysql", "postgresql", or "mongodb"
+  url      = "file:./prisma/dev.db"
+}
+
+// For MySQL, change provider to "mysql"
+// For PostgreSQL, change provider to "postgresql" 
+// For MongoDB, change provider to "mongodb"
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  role      String   @default("RECEPTIONIST") // "RECEPTIONIST" or "SUPERADMIN"
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+model Staff {
+  id        String   @id @default(cuid())
+  name      String
+  email     String?  @unique
+  phone     String?
+  position  String   // e.g., "Stylist", "Receptionist", "Manager"
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("staff")
+}
+
+model Customer {
+  id             String   @id @default(cuid())
+  name           String
+  contact        String
+  email          String?
+  photo          String?
+  services       String   // JSON string of services array
+  serviceTakenBy String?  // Optional field for who provided the service
+  amount         Float
+  discount       Float    @default(0)
+  discountType   String   @default("percentage") // "percentage" only
+  paymentType    String   // "CASH", "UPI", or "CARD"
+  visitDate      DateTime @default(now())
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("customers")
+}

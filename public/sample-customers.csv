@@ -1,0 +1,4 @@
+Name,Contact,Email,Services,ServiceTakenBy,Amount,Discount,FinalAmount,PaymentType,VisitDate,Notes
+Priya Sharma,9876543210,priya@example.com,"Hair Cut; Hair Color; Blow Dry",Ravi Kumar,2500,8,2300,UPI,01/15/2024,Regular customer
+Rajesh Kumar,8765432109,rajesh@example.com,"Beard Trim; Hair Styling",Amit Singh,800,0,800,CASH,01/14/2024,First time customer
+Sneha Patel,7654321098,sneha@example.com,"Facial; Eyebrow Threading; Manicure",Priya Mehta,1800,10,1620,CARD,01/13/2024,VIP customer

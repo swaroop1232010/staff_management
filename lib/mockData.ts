@@ -1,0 +1,73 @@
+// Mock data for development when database is not set up
+export let mockCustomers = [
+  {
+    id: 'cmgc1alhc000217bixjac6um5',
+    name: 'Priya Sharma',
+    contact: '9876543210',
+    email: 'priya@example.com',
+    photo: null,
+    services: JSON.stringify(['Hair Cut', 'Hair Color', 'Blow Dry']),
+    serviceTakenBy: 'Ravi Kumar',
+    amount: 2500,
+    discount: 8,
+    discountType: 'percentage',
+    paymentType: 'UPI',
+    visitDate: new Date('2024-01-15').toISOString(),
+    notes: 'Regular customer, prefers evening appointments',
+    createdAt: new Date('2024-01-15').toISOString(),
+    updatedAt: new Date('2024-01-15').toISOString(),
+  },
+  {
+    id: 'cmgc1alhc000217bixjac6um6',
+    name: 'Rajesh Kumar',
+    contact: '8765432109',
+    email: 'rajesh@example.com',
+    photo: null,
+    services: JSON.stringify(['Beard Trim', 'Hair Styling']),
+    serviceTakenBy: 'Amit Singh',
+    amount: 800,
+    discount: 0,
+    discountType: 'percentage',
+    paymentType: 'CASH',
+    visitDate: new Date('2024-01-14').toISOString(),
+    notes: 'First time customer',
+    createdAt: new Date('2024-01-14').toISOString(),
+    updatedAt: new Date('2024-01-14').toISOString(),
+  },
+  {
+    id: 'cmgc1alhc000217bixjac6um7',
+    name: 'Sneha Patel',
+    contact: '7654321098',
+    email: 'sneha@example.com',
+    photo: null,
+    services: JSON.stringify(['Facial', 'Eyebrow Threading', 'Manicure']),
+    serviceTakenBy: 'Priya Mehta',
+    amount: 1800,
+    discount: 10,
+    discountType: 'percentage',
+    paymentType: 'CARD',
+    visitDate: new Date('2024-01-13').toISOString(),
+    notes: 'VIP customer, 10% discount applied',
+    createdAt: new Date('2024-01-13').toISOString(),
+    updatedAt: new Date('2024-01-13').toISOString(),
+  }
+]
+
+export const mockUsers = [
+  {
+    id: '1',
+    email: 'admin@swasthik.com',
+    name: 'Super Admin',
+    role: 'SUPERADMIN',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: '2',
+    email: 'reception@swasthik.com',
+    name: 'Receptionist',
+    role: 'RECEPTIONIST',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }
+]
