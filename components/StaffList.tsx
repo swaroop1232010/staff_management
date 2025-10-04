@@ -15,7 +15,11 @@ interface Staff {
   updatedAt: string;
 }
 
-export default function StaffList() {
+interface StaffListProps {
+  onNavigate?: (path: string) => void;
+}
+
+export default function StaffList({ onNavigate }: StaffListProps) {
   const [staff, setStaff] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -128,6 +132,17 @@ export default function StaffList() {
     fetchStaff();
   };
 
+  const handleNavigation = (path: string) => {
+    // If in form mode, exit form mode first
+    if (showForm) {
+      setShowForm(false);
+      setEditingStaff(null);
+    }
+    if (onNavigate) {
+      onNavigate(path);
+    }
+  };
+
   const handleEdit = (staff: Staff) => {
     if (user?.role !== 'SUPERADMIN') {
       toast.error('Only administrators can edit staff members');
@@ -138,8 +153,8 @@ export default function StaffList() {
   };
 
   const handleAddNew = () => {
-    if (user?.role !== 'SUPERADMIN') {
-      toast.error('Only administrators can add staff members');
+    if (user?.role !== 'SUPERADMIN' && user?.role !== 'RECEPTIONIST') {
+      toast.error('Only administrators and receptionists can add staff members');
       return;
     }
     setEditingStaff(null);
@@ -171,7 +186,7 @@ export default function StaffList() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-800">Staff Management</h1>
-        {user?.role === 'SUPERADMIN' && (
+        {(user?.role === 'SUPERADMIN' || user?.role === 'RECEPTIONIST') && (
           <button
             onClick={handleAddNew}
             className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"

@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import CustomerForm from '@/components/CustomerForm'
-import CustomerList from '@/components/CustomerList'
 import Header from '@/components/Header'
 import AdminCustomerList from '@/components/AdminCustomerList'
 

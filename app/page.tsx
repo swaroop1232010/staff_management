@@ -45,7 +45,7 @@ export default function HomePage() {
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
-          <Logo size="md" showText={true} />
+          <Logo size="md" showText={true} user={user} />
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-600">Welcome, {user.name}</span>
               <span className="px-2 py-1 bg-primary-100 text-primary-800 text-xs font-medium rounded-full">

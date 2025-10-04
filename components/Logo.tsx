@@ -1,11 +1,35 @@
 import Image from 'next/image'
+import { useRouter } from 'next/navigation'
 
 interface LogoProps {
   size?: 'sm' | 'md' | 'lg'
   showText?: boolean
+  user?: {
+    role: string
+  }
+  onNavigate?: (path: string) => void
 }
 
-export default function Logo({ size = 'md', showText = true }: LogoProps) {
+export default function Logo({ size = 'md', showText = true, user, onNavigate }: LogoProps) {
+  const router = useRouter()
+
+  const handleLogoClick = () => {
+    if (user?.role === 'SUPERADMIN') {
+      const path = '/dashboard/reports'
+      if (onNavigate) {
+        onNavigate(path)
+      } else {
+        router.push(path)
+      }
+    } else {
+      const path = '/dashboard'
+      if (onNavigate) {
+        onNavigate(path)
+      } else {
+        router.push(path)
+      }
+    }
+  }
   const sizeClasses = {
     sm: 'h-8 w-8',
     md: 'h-12 w-12', 
@@ -31,7 +55,10 @@ export default function Logo({ size = 'md', showText = true }: LogoProps) {
   }
 
   return (
-    <div className="flex items-center space-x-3">
+    <button 
+      onClick={handleLogoClick}
+      className="flex items-center space-x-3 hover:opacity-80 transition-opacity cursor-pointer"
+    >
       {/* Logo image */}
       <div className={`${sizeClasses[size]} flex-shrink-0`}>
         <Image
@@ -55,6 +82,6 @@ export default function Logo({ size = 'md', showText = true }: LogoProps) {
           </p>
         </div>
       )}
-    </div>
+    </button>
   )
 }
