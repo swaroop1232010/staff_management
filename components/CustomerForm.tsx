@@ -64,6 +64,20 @@ export default function CustomerForm({ onSuccess, initialData }: CustomerFormPro
       return
     }
     
+    // Validate contact number (exactly 10 digits)
+    if (name === 'contact') {
+      // Remove any non-digit characters
+      const digitsOnly = value.replace(/\D/g, '')
+      // Only allow up to 10 digits
+      if (digitsOnly.length <= 10) {
+        setFormData(prev => ({
+          ...prev,
+          [name]: digitsOnly
+        }))
+      }
+      return
+    }
+    
     setFormData(prev => ({
       ...prev,
       [name]: value
@@ -103,6 +117,13 @@ export default function CustomerForm({ onSuccess, initialData }: CustomerFormPro
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Validate contact number length
+    if (formData.contact.length !== 10) {
+      toast.error('Contact number must be exactly 10 digits')
+      return
+    }
+    
     setLoading(true)
 
     try {
@@ -183,11 +204,25 @@ export default function CustomerForm({ onSuccess, initialData }: CustomerFormPro
               type="tel"
               name="contact"
               required
+              minLength={10}
+              maxLength={10}
+              pattern="[0-9]{10}"
               className="input-field"
               value={formData.contact}
               onChange={handleInputChange}
-              placeholder="Enter contact number"
+              onWheel={handleWheel}
+              placeholder="Enter 10-digit contact number"
             />
+            {formData.contact && formData.contact.length < 10 && (
+              <div className="text-xs text-red-500 mt-1">
+                Contact number must be exactly 10 digits
+              </div>
+            )}
+            {formData.contact && formData.contact.length === 10 && (
+              <div className="text-xs text-green-500 mt-1">
+                ✓ Valid contact number
+              </div>
+            )}
           </div>
 
           <div>
