@@ -17,14 +17,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Start date and end date are required' }, { status: 400 })
     }
 
-    const start = new Date(startDate)
-    const end = new Date(endDate)
+    // Create dates in local timezone to avoid UTC conversion issues
+    const start = new Date(startDate + 'T00:00:00')
+    const end = new Date(endDate + 'T23:59:59')
 
     // Build where clause for date range
     const whereClause: any = {
       visitDate: {
-        gte: startOfDay(start),
-        lte: endOfDay(end)
+        gte: start,
+        lte: end
       }
     }
 
@@ -109,13 +110,13 @@ export async function GET(request: NextRequest) {
     const dailyData: { date: string; amount: number; customers: number }[] = []
     
     // Check if start and end dates are the same day
-    const isSameDay = start.toDateString() === end.toDateString()
+    const isSameDay = startDate === endDate
     
     if (timeFilter === 'daily' || isSameDay) {
       // Single day - use all customers from the query
       const dayAmount = customers.reduce((sum, customer) => sum + customer.amount, 0)
       dailyData.push({
-        date: format(start, 'yyyy-MM-dd'),
+        date: startDate,
         amount: dayAmount,
         customers: customers.length
       })
