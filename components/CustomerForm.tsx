@@ -23,7 +23,10 @@ export default function CustomerForm({ onSuccess, initialData }: CustomerFormPro
     email: initialData?.email || '',
     photo: initialData?.photo || '',
     services: initialData?.services ? JSON.parse(initialData.services) : [],
-    serviceTakenBy: initialData?.serviceTakenBy || '',
+    serviceTakenBy: initialData?.serviceTakenBy ? 
+      (typeof initialData.serviceTakenBy === 'string' ? 
+        (initialData.serviceTakenBy.startsWith('[') ? JSON.parse(initialData.serviceTakenBy) : [initialData.serviceTakenBy]) : 
+        initialData.serviceTakenBy) : [],
     amount: initialData?.amount || '',
     discount: initialData?.discount || '',
     paymentType: initialData?.paymentType || 'CASH',
@@ -362,21 +365,43 @@ export default function CustomerForm({ onSuccess, initialData }: CustomerFormPro
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Service Taken By (Optional)
+            Service Taken By (Optional - Multiple Selection)
           </label>
-          <select
-            name="serviceTakenBy"
-            className="input-field"
-            value={formData.serviceTakenBy}
-            onChange={handleInputChange}
-          >
-            <option value="">Select staff member</option>
+          <div className="space-y-2 max-h-32 overflow-y-auto border border-gray-300 rounded-md p-2">
             {staff.map((member) => (
-              <option key={member.id} value={member.name}>
-                {member.name} - {member.position}
-              </option>
+              <label key={member.id} className="flex items-center space-x-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.serviceTakenBy.includes(member.name)}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setFormData(prev => ({
+                        ...prev,
+                        serviceTakenBy: [...prev.serviceTakenBy, member.name]
+                      }))
+                    } else {
+                      setFormData(prev => ({
+                        ...prev,
+                        serviceTakenBy: prev.serviceTakenBy.filter((name: string) => name !== member.name)
+                      }))
+                    }
+                  }}
+                  className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                />
+                <span className="text-sm text-gray-700">
+                  {member.name} - {member.position}
+                </span>
+              </label>
             ))}
-          </select>
+          </div>
+          {formData.serviceTakenBy.length > 0 && (
+            <div className="mt-2">
+              <span className="text-sm text-gray-600">Selected: </span>
+              <span className="text-sm font-medium text-primary-600">
+                {formData.serviceTakenBy.join(', ')}
+              </span>
+            </div>
+          )}
         </div>
 
         <div>

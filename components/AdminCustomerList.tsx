@@ -220,7 +220,17 @@ export default function AdminCustomerList({ onEdit }: AdminCustomerListProps) {
       customer.contact.includes(searchTerm) ||
       (customer.email && customer.email.toLowerCase().includes(searchTerm.toLowerCase()))
     
-    const matchesStaff = !selectedStaff || customer.serviceTakenBy === selectedStaff
+    const matchesStaff = !selectedStaff || (() => {
+      if (!customer.serviceTakenBy) return false
+      try {
+        // Try to parse as JSON array first
+        const staffArray = JSON.parse(customer.serviceTakenBy)
+        return Array.isArray(staffArray) ? staffArray.includes(selectedStaff) : customer.serviceTakenBy === selectedStaff
+      } catch {
+        // If not JSON, treat as single staff member
+        return customer.serviceTakenBy === selectedStaff
+      }
+    })()
     
     // Date filtering
     const customerDate = new Date(customer.visitDate)
@@ -550,7 +560,7 @@ export default function AdminCustomerList({ onEdit }: AdminCustomerListProps) {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex flex-wrap gap-1">
-                          {services.slice(0, 2).map((service: string, index: number) => (
+                          {services.map((service: string, index: number) => (
                             <span
                               key={index}
                               className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-primary-100 text-primary-800"
@@ -558,16 +568,19 @@ export default function AdminCustomerList({ onEdit }: AdminCustomerListProps) {
                               {service}
                             </span>
                           ))}
-                          {services.length > 2 && (
-                            <span className="text-xs text-gray-500">
-                              +{services.length - 2} more
-                            </span>
-                          )}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">
-                          {customer.serviceTakenBy || '-'}
+                          {(() => {
+                            if (!customer.serviceTakenBy) return '-'
+                            try {
+                              const staffArray = JSON.parse(customer.serviceTakenBy)
+                              return Array.isArray(staffArray) ? staffArray.join(', ') : customer.serviceTakenBy
+                            } catch {
+                              return customer.serviceTakenBy
+                            }
+                          })()}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">

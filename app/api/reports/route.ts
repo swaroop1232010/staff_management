@@ -76,11 +76,27 @@ export async function GET(request: NextRequest) {
     const staffMap = new Map<string, { count: number; amount: number }>()
     customers.forEach(customer => {
       if (customer.serviceTakenBy) {
-        const existing = staffMap.get(customer.serviceTakenBy) || { count: 0, amount: 0 }
-        staffMap.set(customer.serviceTakenBy, {
-          count: existing.count + 1,
-          amount: existing.amount + customer.amount
-        })
+        try {
+          // Parse the serviceTakenBy field - it can be a single string or JSON array
+          let staffMembers: string[] = []
+          try {
+            staffMembers = JSON.parse(customer.serviceTakenBy)
+          } catch {
+            // If it's not JSON, treat it as a single staff member
+            staffMembers = [customer.serviceTakenBy]
+          }
+          
+          // Add each staff member to the breakdown
+          staffMembers.forEach(staff => {
+            const existing = staffMap.get(staff) || { count: 0, amount: 0 }
+            staffMap.set(staff, {
+              count: existing.count + 1,
+              amount: existing.amount + customer.amount
+            })
+          })
+        } catch (error) {
+          console.error('Error parsing serviceTakenBy:', error)
+        }
       }
     })
 

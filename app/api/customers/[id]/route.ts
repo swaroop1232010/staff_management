@@ -70,7 +70,7 @@ export async function PUT(
     email: data.email || null,
     photo: data.photo || null,
     services: JSON.stringify(data.services),
-    serviceTakenBy: data.serviceTakenBy || null,
+    serviceTakenBy: data.serviceTakenBy ? JSON.stringify(data.serviceTakenBy) : null,
     amount: parseFloat(data.amount),
     discount: parseFloat(data.discount) || 0,
     paymentType: data.paymentType,
