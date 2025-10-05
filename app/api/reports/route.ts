@@ -47,17 +47,16 @@ export async function GET(request: NextRequest) {
     const totalCustomers = customers.length
     const averageAmount = totalCustomers > 0 ? totalAmount / totalCustomers : 0
 
-    // Service breakdown
-    const serviceMap = new Map<string, { count: number; amount: number }>()
+    // Service breakdown - only count customers, no revenue calculation
+    const serviceMap = new Map<string, { count: number }>()
     customers.forEach(customer => {
       try {
         const services = JSON.parse(customer.services)
         services.forEach((service: string) => {
           if (serviceFilter === 'all' || service === serviceFilter) {
-            const existing = serviceMap.get(service) || { count: 0, amount: 0 }
+            const existing = serviceMap.get(service) || { count: 0 }
             serviceMap.set(service, {
-              count: existing.count + 1,
-              amount: existing.amount + customer.amount
+              count: existing.count + 1
             })
           }
         })
@@ -68,9 +67,8 @@ export async function GET(request: NextRequest) {
 
     const serviceBreakdown = Array.from(serviceMap.entries()).map(([service, data]) => ({
       service,
-      count: data.count,
-      amount: data.amount
-    })).sort((a, b) => b.amount - a.amount)
+      count: data.count
+    })).sort((a, b) => b.count - a.count)
 
     // Staff breakdown
     const staffMap = new Map<string, { count: number; amount: number }>()

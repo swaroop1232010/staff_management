@@ -306,21 +306,17 @@ export default function ReportsPage() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Service Breakdown */}
                 <div className="bg-white rounded-lg shadow p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Revenue by Service</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Services Provided</h3>
                   {reportData.serviceBreakdown.length > 0 ? (
                     <>
-                      <div className="grid grid-cols-3 gap-4 mb-3 pb-2 border-b border-gray-200">
+                      <div className="grid grid-cols-2 gap-4 mb-3 pb-2 border-b border-gray-200">
                         <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">Service</div>
-                        <div className="text-xs font-medium text-gray-500 uppercase tracking-wider text-right">Revenue</div>
                         <div className="text-xs font-medium text-gray-500 uppercase tracking-wider text-right">Customers</div>
                       </div>
                       <div className="space-y-3">
                         {reportData.serviceBreakdown.map((service, index) => (
-                          <div key={index} className="grid grid-cols-3 gap-4 items-center">
+                          <div key={index} className="grid grid-cols-2 gap-4 items-center">
                             <span className="text-sm text-gray-900 font-medium">{service.service}</span>
-                            <div className="text-right">
-                              <span className="text-sm font-semibold text-gray-900">₹{service.amount.toLocaleString()}</span>
-                            </div>
                             <div className="text-right">
                               <span className="text-sm text-gray-600">{service.count}</span>
                             </div>
