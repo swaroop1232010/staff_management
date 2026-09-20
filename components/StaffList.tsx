@@ -184,46 +184,48 @@ export default function StaffList({ onNavigate }: StaffListProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-800">Staff Management</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">Staff Management</h1>
+          <p className="text-xs sm:text-sm text-gray-500 mt-0.5">Manage salon stylists, specialists, and team roles</p>
+        </div>
         {(user?.role === 'SUPERADMIN' || user?.role === 'RECEPTIONIST') && (
           <button
             onClick={handleAddNew}
-            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
+            className="btn-primary flex items-center space-x-1.5"
           >
-            Add New Staff
+            <span>+</span>
+            <span>Add New Staff</span>
           </button>
         )}
       </div>
 
       {selectedStaff.length > 0 && user?.role === 'SUPERADMIN' && (
-        <div className="bg-red-50 border border-red-200 rounded-md p-4">
-          <div className="flex justify-between items-center">
-            <span className="text-red-700">
-              {selectedStaff.length} staff member(s) selected
-            </span>
-            <button
-              onClick={handleBulkDelete}
-              className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors"
-            >
-              Delete Selected
-            </button>
-          </div>
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex justify-between items-center">
+          <span className="text-red-800 text-sm font-semibold">
+            {selectedStaff.length} staff member(s) selected
+          </span>
+          <button
+            onClick={handleBulkDelete}
+            className="bg-red-600 text-white px-3.5 py-1.5 rounded-lg hover:bg-red-700 text-xs font-bold transition-colors"
+          >
+            Delete Selected
+          </button>
         </div>
       )}
 
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+      <div className="card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+            <thead className="bg-gray-50/80">
               <tr>
                 {user?.role === 'SUPERADMIN' && (
-                  <th className="px-6 py-3 text-left">
+                  <th className="px-6 py-3.5 text-left">
                     <input
                       type="checkbox"
                       checked={selectedStaff.length === staff.length && staff.length > 0}
                       onChange={handleSelectAll}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
                     />
                   </th>
                 )}
@@ -260,50 +262,55 @@ export default function StaffList({ onNavigate }: StaffListProps) {
                           type="checkbox"
                           checked={selectedStaff.includes(member.id)}
                           onChange={() => handleSelectStaff(member.id)}
-                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                          className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
                         />
                       </td>
                     )}
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{member.name}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{member.position}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
-                        {member.email && <div>{member.email}</div>}
-                        {member.phone && <div>{member.phone}</div>}
-                        {!member.email && !member.phone && <div className="text-gray-400">No contact info</div>}
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 rounded-full bg-primary-100 text-primary-800 flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs">
+                          {member.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="text-sm font-semibold text-gray-900">{member.name}</div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        member.isActive 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-red-100 text-red-800'
-                      }`}>
-                        {member.isActive ? 'Active' : 'Inactive'}
+                      <span className="text-xs font-semibold text-gray-700 bg-gray-100 px-2.5 py-1 rounded-md">
+                        {member.position}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                    <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-600">
+                      {member.phone && <div className="font-mono">{member.phone}</div>}
+                      {member.email && <div className="text-gray-400">{member.email}</div>}
+                      {!member.email && !member.phone && <span className="text-gray-400">—</span>}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex px-2.5 py-0.5 text-xs font-bold rounded-full ${
+                        member.isActive 
+                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' 
+                          : 'bg-gray-100 text-gray-600 border border-gray-200'
+                      }`}>
+                        {member.isActive ? '● Active' : 'Inactive'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-3">
                       {user?.role === 'SUPERADMIN' ? (
                         <>
                           <button
                             onClick={() => handleEdit(member)}
-                            className="text-blue-600 hover:text-blue-900"
+                            className="text-primary-600 hover:text-primary-800 font-semibold text-xs"
                           >
                             Edit
                           </button>
                           <button
                             onClick={() => handleDelete(member.id)}
-                            className="text-red-600 hover:text-red-900"
+                            className="text-red-600 hover:text-red-800 font-semibold text-xs"
                           >
                             Delete
                           </button>
                         </>
                       ) : (
-                        <span className="text-gray-400">View Only</span>
+                        <span className="text-gray-400 text-xs">View Only</span>
                       )}
                     </td>
                   </tr>

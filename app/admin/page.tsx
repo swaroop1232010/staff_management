@@ -5,11 +5,13 @@ import { useRouter } from 'next/navigation'
 import CustomerForm from '@/components/CustomerForm'
 import Header from '@/components/Header'
 import AdminCustomerList from '@/components/AdminCustomerList'
+import RewardSettingsModal from '@/components/RewardSettingsModal'
 
 export default function AdminPage() {
   const [user, setUser] = useState<any>(null)
   const [showForm, setShowForm] = useState(false)
   const [editingCustomer, setEditingCustomer] = useState<any>(null)
+  const [showSettingsModal, setShowSettingsModal] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -71,9 +73,17 @@ export default function AdminPage() {
       
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
-          <div className="flex justify-between items-center mb-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
             <h1 className="text-3xl font-bold text-gray-900">Admin Panel</h1>
-            <div className="flex space-x-3">
+            <div className="flex flex-wrap gap-2 sm:gap-3">
+              <button
+                onClick={() => setShowSettingsModal(true)}
+                className="btn-secondary flex items-center space-x-1.5"
+                title="Configure monthly customer reward spend threshold"
+              >
+                <span>🎁</span>
+                <span>Reward Settings</span>
+              </button>
               <button
                 onClick={() => router.push('/import-export')}
                 className="btn-secondary"
@@ -88,6 +98,11 @@ export default function AdminPage() {
               </button>
             </div>
           </div>
+
+          <RewardSettingsModal
+            isOpen={showSettingsModal}
+            onClose={() => setShowSettingsModal(false)}
+          />
 
           {showForm ? (
             <CustomerForm 

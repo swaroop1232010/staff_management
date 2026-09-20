@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { mockCustomers } from '@/lib/mockData'
+import { normalizePhone, isValidPhone } from '@/lib/phone'
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic'
@@ -42,12 +43,15 @@ export async function POST(request: NextRequest) {
     }, { status: 400 })
   }
 
+  const normalizedContact = normalizePhone(data.contact)
+
   // Validate contact number format (exactly 10 digits)
-  if (!/^[0-9]{10}$/.test(data.contact)) {
+  if (!isValidPhone(normalizedContact)) {
     return NextResponse.json({ 
-      error: 'Contact number must be exactly 10 digits' 
+      error: 'Contact number must be a valid 10-digit number' 
     }, { status: 400 })
   }
+  data.contact = normalizedContact
 
   // Validate services array
   if (!Array.isArray(data.services) || data.services.length === 0) {

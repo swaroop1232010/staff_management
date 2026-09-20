@@ -502,19 +502,9 @@ export default function CustomerList() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
-                          {customer.photo ? (
-                            <img
-                              className="h-10 w-10 rounded-full object-cover"
-                              src={customer.photo}
-                              alt={customer.name}
-                            />
-                          ) : (
-                            <div className="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
-                              <span className="text-primary-600 font-medium">
-                                {customer.name.charAt(0).toUpperCase()}
-                              </span>
-                            </div>
-                          )}
+                          <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-primary-600 to-amber-500 flex items-center justify-center shadow-xs text-white font-bold text-sm shrink-0">
+                            {customer.name ? customer.name.charAt(0).toUpperCase() : 'C'}
+                          </div>
                           <div className="ml-4">
                             <div className="text-sm font-medium text-gray-900">
                               {customer.name}

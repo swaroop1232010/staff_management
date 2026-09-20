@@ -1,14 +1,45 @@
-﻿'use client'
+'use client'
 
 import { useState, useEffect, useRef } from 'react'
 import toast from 'react-hot-toast'
-import PhotoUpload from './PhotoUpload'
+import PhoneLookupStep from './PhoneLookupStep'
+import { normalizePhone, isValidPhone } from '@/lib/phone'
 
 interface Staff {
-  id: string;
-  name: string;
-  position: string;
-  isActive: boolean;
+  id: string
+  name: string
+  position: string
+  isActive: boolean
+}
+
+interface VisitHistoryItem {
+  id: string
+  visitDate: string
+  services: string[]
+  serviceTakenBy?: string
+  amount: number
+  discount: number
+  finalAmount: number
+  paymentType: string
+  notes?: string
+}
+
+interface ExistingCustomerData {
+  name: string
+  contact: string
+  email?: string
+  photo?: string
+}
+
+interface LookupResult {
+  exists: boolean
+  phone: string
+  customer?: ExistingCustomerData
+  history?: VisitHistoryItem[]
+  currentMonthTotal?: number
+  currentMonthName?: string
+  rewardThreshold?: number
+  isEligibleForReward?: boolean
 }
 
 interface CustomerFormProps {
@@ -16,35 +47,136 @@ interface CustomerFormProps {
   initialData?: any
 }
 
+// 13 Predefined categories with full service catalogue
 const SERVICE_CATEGORIES = [
-  { category: 'Threading', services: ['Eyebrow','Upper Lip','Forehead','Chin','Full Face','Side Locks','Neck'] },
-  { category: 'Hair Services', services: ['Basic Hair Cut','U-Cut','V-Cut','Step Cut','Layer Cut','Feather Cut','Butterfly Cut','Bob Cut','Blunt Cut','Front Layers','Curtain Bangs','Hair Trim','Kids Hair Cut','Hair Wash','Blow Dry'] },
-  { category: 'Hair Colour', services: ['Global Hair Colour','Root Touch-Up','Grey Hair Coverage','Global Black Colour','Fashion Hair Colour','Highlights','Lowlights','Balayage','Ombre','Streaks','Front Hair Colour','Underlayer Hair Colour','Colour Correction'] },
-  { category: 'Facial Service', services: ['Clean-up','Fruit Facial','Gold Facial','Wine Facial','Glow Facial','Whitening Facial','Instant Facial','D-Tan Facial','Herbal Facial','Daimond Facial','Pearl Facial','Luxury Gold Facial','O3 Facial','Sea Saw Facial','Chocolate Facial','Radiant Facial','Bridal Facial','Acne/Anti-Pimple Facial','Hydrating Facial','Hydra Facial','Pigmentation Facial'] },
-  { category: 'PMU (Permanent Make-Up)', services: ['Microblading – Eyebrow Enhancement','Ombre/Powder Brows','Combination Brows','Lip Blush','Lip Neutralization','Eyeliner / Lash Line Enhancement','Beauty Mark / Mole Enhancement','PMU Colour Correction / Touch-Up','Annual/Follow-up Touch-Up'] },
-  { category: 'Hair Treatments', services: ['Hair Spa','Keratin Treatment','Smoothening','Hair Straightening','Hair Botox','Cysteine Treatment','Protein Treatment','Hair Fall Treatment','Anti-Dandruff Treatment','Scalp Treatment','Dry & Damaged Hair Treatment','Frizzy Hair Treatment','Split-End Treatment','Deep Conditioning','Hair Detox Treatment'] },
-  { category: 'Manicure Services', services: ['Basic Manicure','Spa Manicure','Charcoal Manicure','Crystal Manicure','Ice Cream Manicure','Nail Shaping & Buffing','Cuticle Care','Hand Scrub & Polish','Hand Massage'] },
-  { category: 'Pedicure Services', services: ['Basic Pedicure','Spa Pedicure','Crystal Pedicure','Ice Cream Pedicure','Charcoal Pedicure','Foot Scrub','Cuticle & Nail Care','Heel Care','Foot Massage','Dead Skin Removal'] },
-  { category: 'Waxing', services: ['Full Arms Wax','Half Arms Wax','Underarms Wax','Full Legs Wax','Half Legs Wax','Full Body Wax','Back Wax','Front Body Wax','Stomach Wax','Bikini Line Wax','Face Wax','Hand Wax','Foot Wax'] },
-  { category: 'D-Tan Packs', services: ['Face D-Tan','Face & Neck D-Tan','Hands D-Tan','Legs D-Tan','Back D-Tan','Neck D-Tan','Full Body D-Tan'] },
-  { category: 'Packs', services: ['Peel-Off Mask','Sheet Mask','Clay Mask','Charcoal Mask','Gold Mask','Collagen Mask','Gel Mask','Aloe Vera Mask','Hydrating Mask','Brightening Mask','De-Tan Mask','Anti-Pimple Mask','Cooling & Soothing Mask','Rubber Mask / Alginate Mask'] },
-  { category: 'Nail Extensions', services: ['Basic Nail Polish','French Nail Polish','Gel Polish','Gel Polish Removal','Nail Shaping & Buffing','Nail Art','Glitter Nail Polish','Chrome Nail Finish','Matte Nail Finish','Nail Extension','Nail Extension Removal'] },
-  { category: 'Make-Up', services: ['Basic Makeup','Party Makeup','Engagement Makeup','Reception Makeup','Bridal Makeup','HD Makeup','Airbrush Makeup','Sangeet Makeup','Baby Shower / Maternity Makeup','Photoshoot Makeup','Saree Draping','Hairstyling','Makeup + Hairstyle Combo','Bridal Makeup + Hairstyle + Saree Draping'] },
+  {
+    category: 'Threading',
+    services: ['Eyebrow', 'Upper Lip', 'Forehead', 'Chin', 'Full Face', 'Side Locks', 'Neck'],
+  },
+  {
+    category: 'Hair Services',
+    services: [
+      'Basic Hair Cut', 'U-Cut', 'V-Cut', 'Step Cut', 'Layer Cut', 'Feather Cut',
+      'Butterfly Cut', 'Bob Cut', 'Blunt Cut', 'Front Layers', 'Curtain Bangs',
+      'Hair Trim', 'Kids Hair Cut', 'Hair Wash', 'Blow Dry',
+    ],
+  },
+  {
+    category: 'Hair Colour',
+    services: [
+      'Global Hair Colour', 'Root Touch-Up', 'Grey Hair Coverage', 'Global Black Colour',
+      'Fashion Hair Colour', 'Highlights', 'Lowlights', 'Balayage', 'Ombre', 'Streaks',
+      'Front Hair Colour', 'Underlayer Hair Colour', 'Colour Correction',
+    ],
+  },
+  {
+    category: 'Facial Service',
+    services: [
+      'Clean-up', 'Fruit Facial', 'Gold Facial', 'Wine Facial', 'Glow Facial',
+      'Whitening Facial', 'Instant Facial', 'D-Tan Facial', 'Herbal Facial',
+      'Daimond Facial', 'Pearl Facial', 'Luxury Gold Facial', 'O3 Facial',
+      'Sea Saw Facial', 'Chocolate Facial', 'Radiant Facial', 'Bridal Facial',
+      'Acne/Anti-Pimple Facial', 'Hydrating Facial', 'Hydra Facial', 'Pigmentation Facial',
+    ],
+  },
+  {
+    category: 'PMU (Permanent Make-Up)',
+    services: [
+      'Microblading – Eyebrow Enhancement', 'Ombre/Powder Brows', 'Combination Brows',
+      'Lip Blush', 'Lip Neutralization', 'Eyeliner / Lash Line Enhancement',
+      'Beauty Mark / Mole Enhancement', 'PMU Colour Correction / Touch-Up',
+      'Annual/Follow-up Touch-Up',
+    ],
+  },
+  {
+    category: 'Hair Treatments',
+    services: [
+      'Hair Spa', 'Keratin Treatment', 'Smoothening', 'Hair Straightening', 'Hair Botox',
+      'Cysteine Treatment', 'Protein Treatment', 'Hair Fall Treatment',
+      'Anti-Dandruff Treatment', 'Scalp Treatment', 'Dry & Damaged Hair Treatment',
+      'Frizzy Hair Treatment', 'Split-End Treatment', 'Deep Conditioning', 'Hair Detox Treatment',
+    ],
+  },
+  {
+    category: 'Manicure Services',
+    services: [
+      'Basic Manicure', 'Spa Manicure', 'Charcoal Manicure', 'Crystal Manicure',
+      'Ice Cream Manicure', 'Nail Shaping & Buffing', 'Cuticle Care',
+      'Hand Scrub & Polish', 'Hand Massage',
+    ],
+  },
+  {
+    category: 'Pedicure Services',
+    services: [
+      'Basic Pedicure', 'Spa Pedicure', 'Crystal Pedicure', 'Ice Cream Pedicure',
+      'Charcoal Pedicure', 'Foot Scrub', 'Cuticle & Nail Care', 'Heel Care',
+      'Foot Massage', 'Dead Skin Removal',
+    ],
+  },
+  {
+    category: 'Waxing',
+    services: [
+      'Full Arms Wax', 'Half Arms Wax', 'Underarms Wax', 'Full Legs Wax', 'Half Legs Wax',
+      'Full Body Wax', 'Back Wax', 'Front Body Wax', 'Stomach Wax', 'Bikini Line Wax',
+      'Face Wax', 'Hand Wax', 'Foot Wax',
+    ],
+  },
+  {
+    category: 'D-Tan Packs',
+    services: [
+      'Face D-Tan', 'Face & Neck D-Tan', 'Hands D-Tan', 'Legs D-Tan',
+      'Back D-Tan', 'Neck D-Tan', 'Full Body D-Tan',
+    ],
+  },
+  {
+    category: 'Packs',
+    services: [
+      'Peel-Off Mask', 'Sheet Mask', 'Clay Mask', 'Charcoal Mask', 'Gold Mask',
+      'Collagen Mask', 'Gel Mask', 'Aloe Vera Mask', 'Hydrating Mask',
+      'Brightening Mask', 'De-Tan Mask', 'Anti-Pimple Mask',
+      'Cooling & Soothing Mask', 'Rubber Mask / Alginate Mask',
+    ],
+  },
+  {
+    category: 'Nail Extensions',
+    services: [
+      'Basic Nail Polish', 'French Nail Polish', 'Gel Polish', 'Gel Polish Removal',
+      'Nail Shaping & Buffing', 'Nail Art', 'Glitter Nail Polish', 'Chrome Nail Finish',
+      'Matte Nail Finish', 'Nail Extension', 'Nail Extension Removal',
+    ],
+  },
+  {
+    category: 'Make-Up',
+    services: [
+      'Basic Makeup', 'Party Makeup', 'Engagement Makeup', 'Reception Makeup',
+      'Bridal Makeup', 'HD Makeup', 'Airbrush Makeup', 'Sangeet Makeup',
+      'Baby Shower / Maternity Makeup', 'Photoshoot Makeup', 'Saree Draping',
+      'Hairstyling', 'Makeup + Hairstyle Combo', 'Bridal Makeup + Hairstyle + Saree Draping',
+    ],
+  },
 ]
 
 const ALL_KNOWN_SERVICES = SERVICE_CATEGORIES.flatMap(c => c.services)
 
 export default function CustomerForm({ onSuccess, initialData }: CustomerFormProps) {
+  // Step state: 'lookup' | 'existing' | 'new'
+  const [step, setStep] = useState<'lookup' | 'existing' | 'new'>(
+    initialData ? 'new' : 'lookup'
+  )
+
+  const [lookupData, setLookupData] = useState<LookupResult | null>(null)
+
   const [formData, setFormData] = useState({
     name: initialData?.name || '',
     contact: initialData?.contact || '',
     email: initialData?.email || '',
-    photo: initialData?.photo || '',
     services: initialData?.services ? JSON.parse(initialData.services) : [],
     serviceTakenBy: initialData?.serviceTakenBy
-      ? (typeof initialData.serviceTakenBy === 'string'
-          ? (initialData.serviceTakenBy.startsWith('[') ? JSON.parse(initialData.serviceTakenBy) : [initialData.serviceTakenBy])
-          : initialData.serviceTakenBy)
+      ? typeof initialData.serviceTakenBy === 'string'
+        ? initialData.serviceTakenBy.startsWith('[')
+          ? JSON.parse(initialData.serviceTakenBy)
+          : [initialData.serviceTakenBy]
+        : initialData.serviceTakenBy
       : [],
     amount: initialData?.amount || '',
     discount: initialData?.discount || '',
@@ -84,8 +216,43 @@ export default function CustomerForm({ onSuccess, initialData }: CustomerFormPro
     }
   }
 
+  // Handle phone lookup result
+  const handlePhoneFound = (result: LookupResult) => {
+    setLookupData(result)
+    if (result.exists && result.customer) {
+      setFormData(prev => ({
+        ...prev,
+        name: result.customer!.name,
+        contact: result.customer!.contact,
+        email: result.customer!.email || '',
+        services: [],
+        serviceTakenBy: [],
+        amount: '',
+        discount: '',
+        paymentType: 'CASH',
+        notes: '',
+      }))
+      setStep('existing')
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        contact: result.phone,
+        name: '',
+        email: '',
+        services: [],
+        serviceTakenBy: [],
+        amount: '',
+        discount: '',
+        paymentType: 'CASH',
+        notes: '',
+      }))
+      setStep('new')
+    }
+  }
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
+
     if (name === 'discount') {
       const numValue = parseFloat(value)
       if (value === '' || (numValue >= 0 && numValue <= 100)) {
@@ -93,6 +260,7 @@ export default function CustomerForm({ onSuccess, initialData }: CustomerFormPro
       }
       return
     }
+
     if (name === 'contact') {
       const digitsOnly = value.replace(/\D/g, '')
       if (digitsOnly.length <= 10) {
@@ -100,6 +268,7 @@ export default function CustomerForm({ onSuccess, initialData }: CustomerFormPro
       }
       return
     }
+
     setFormData(prev => ({ ...prev, [name]: value }))
   }
 
@@ -107,11 +276,15 @@ export default function CustomerForm({ onSuccess, initialData }: CustomerFormPro
     if (e.currentTarget.type === 'number') e.currentTarget.blur()
   }
 
+  // Service autocomplete filtering
   const getFilteredCategories = () => {
     const q = serviceQuery.trim().toLowerCase()
     if (!q) return SERVICE_CATEGORIES
     return SERVICE_CATEGORIES
-      .map(cat => ({ category: cat.category, services: cat.services.filter(s => s.toLowerCase().includes(q)) }))
+      .map(cat => ({
+        category: cat.category,
+        services: cat.services.filter(s => s.toLowerCase().includes(q)),
+      }))
       .filter(cat => cat.services.length > 0)
   }
 
@@ -138,106 +311,477 @@ export default function CustomerForm({ onSuccess, initialData }: CustomerFormPro
   }
 
   const removeService = (index: number) => {
-    setFormData(prev => ({ ...prev, services: prev.services.filter((_: any, i: number) => i !== index) }))
-  }
-
-  const handlePhotoSelect = (photoUrl: string) => {
-    setFormData(prev => ({ ...prev, photo: photoUrl }))
+    setFormData(prev => ({
+      ...prev,
+      services: prev.services.filter((_: any, i: number) => i !== index),
+    }))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (formData.contact.length !== 10) {
+
+    const cleanContact = normalizePhone(formData.contact)
+    if (!isValidPhone(cleanContact)) {
       toast.error('Contact number must be exactly 10 digits')
       return
     }
+
+    if (formData.services.length === 0) {
+      toast.error('Please add at least one service')
+      return
+    }
+
     setLoading(true)
+
     try {
       const url = initialData ? `/api/customers/${initialData.id}` : '/api/customers'
       const method = initialData ? 'PUT' : 'POST'
-      const response = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(formData) })
+
+      const payload = {
+        ...formData,
+        contact: cleanContact,
+      }
+
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+
       if (response.ok) {
-        toast.success(initialData ? 'Customer updated successfully!' : 'Customer added successfully!')
+        toast.success(
+          initialData
+            ? 'Customer updated successfully!'
+            : step === 'existing'
+            ? "Today's visit recorded for " + formData.name + '!'
+            : 'New customer added successfully!'
+        )
         onSuccess()
       } else {
-        const errorText = await response.text()
-        let errorMessage = 'Failed to save customer'
-        try { const d = JSON.parse(errorText); if (d.error) errorMessage = d.error } catch { if (errorText) errorMessage = errorText }
-        toast.error(errorMessage)
+        const errorData = await response.json().catch(() => ({}))
+        toast.error(errorData.error || 'Failed to save customer')
       }
-    } catch { toast.error('An error occurred while saving customer') }
-    finally { setLoading(false) }
+    } catch {
+      toast.error('An error occurred while saving customer')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Live calculation of monthly total including today's bill
+  const prevMonthTotal = (step === 'existing' && lookupData?.currentMonthTotal) || 0
+  const inputAmount = parseFloat(formData.amount) || 0
+  const inputDiscount = parseFloat(formData.discount) || 0
+  const todayNet = Math.max(0, inputAmount - (inputAmount * inputDiscount) / 100)
+  const projectedMonthTotal = Math.round((prevMonthTotal + todayNet) * 100) / 100
+  const threshold = lookupData?.rewardThreshold || 5000
+  const alreadyHadReward = prevMonthTotal >= threshold
+  const qualifiesWithToday = !alreadyHadReward && projectedMonthTotal >= threshold
+  const stillNeeds = Math.max(0, threshold - projectedMonthTotal)
+
+  // STEP 1: Phone Search view
+  if (step === 'lookup' && !initialData) {
+    return <PhoneLookupStep onFound={handlePhoneFound} onCancel={onSuccess} />
   }
 
   return (
-    <div className="card p-6">
-      <h2 className="text-2xl font-bold text-gray-900 mb-6">{initialData ? 'Edit Customer' : 'Add New Customer'}</h2>
+    <div className="card p-6 max-w-4xl mx-auto">
+      {/* Top Navigation & Status */}
+      <div className="flex items-center justify-between pb-4 mb-6 border-b border-gray-100">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">
+            {initialData
+              ? 'Edit Record'
+              : step === 'existing'
+              ? 'Add Visit for Existing Customer'
+              : 'Register New Customer'}
+          </h2>
+          <p className="text-sm text-gray-500">
+            {step === 'existing'
+              ? 'Existing profile found. Add today\'s service to their history.'
+              : 'Fill in details to register and log the first visit.'}
+          </p>
+        </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Customer Name *</label>
-            <input type="text" name="name" required className="input-field" value={formData.name} onChange={handleInputChange} placeholder="Enter customer name" />
-          </div>
+        {!initialData && (
+          <button
+            type="button"
+            onClick={() => setStep('lookup')}
+            className="text-sm text-primary-600 hover:text-primary-800 font-medium flex items-center space-x-1"
+          >
+            <span>← Search Another Number</span>
+          </button>
+        )}
+      </div>
 
-          <div>
-            <PhotoUpload onPhotoSelect={handlePhotoSelect} currentPhoto={formData.photo} />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Contact Number *</label>
-            <input
-              type="tel" name="contact" required minLength={10} maxLength={10} pattern="[0-9]{10}"
-              className="input-field" value={formData.contact} onChange={handleInputChange} onWheel={handleWheel}
-              onKeyDown={(e) => {
-                if (!/[0-9]/.test(e.key) && !['Backspace','Delete','Tab','Escape','Enter','ArrowLeft','ArrowRight'].includes(e.key)) e.preventDefault()
-                if (formData.contact.length >= 10 && !['Backspace','Delete'].includes(e.key)) e.preventDefault()
-              }}
-              placeholder="Enter 10-digit contact number"
-            />
-            {formData.contact && formData.contact.length < 10 && <div className="text-xs text-red-500 mt-1">Contact number must be exactly 10 digits</div>}
-            {formData.contact && formData.contact.length === 10 && <div className="text-xs text-green-500 mt-1">✓ Valid contact number</div>}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Email (Optional)</label>
-            <input type="email" name="email" className="input-field" value={formData.email} onChange={handleInputChange} placeholder="Enter email address" />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Payment Type *</label>
-            <select name="paymentType" required className="input-field" value={formData.paymentType} onChange={handleInputChange}>
-              <option value="CASH">Cash</option>
-              <option value="UPI">UPI</option>
-              <option value="CARD">Card</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Amount *</label>
-            <input type="number" name="amount" required step="0.01" min="0" className="input-field" value={formData.amount} onChange={handleInputChange} onWheel={handleWheel} placeholder="Enter amount" />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Discount</label>
-            <div className="flex space-x-2">
-              <input type="number" name="discount" step="0.01" min="0" max="100" className="input-field flex-1" value={formData.discount} onChange={handleInputChange} onWheel={handleWheel} placeholder="Enter discount percentage (0-100)" />
-              <div className="flex items-center px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 font-medium">%</div>
-            </div>
-            {formData.discount && formData.amount && (
-              <div className="text-xs text-gray-500 mt-1">
-                Discount: Rs.{(parseFloat(formData.amount) * parseFloat(formData.discount) / 100).toFixed(2)} | Final Amount: Rs.{(parseFloat(formData.amount) - (parseFloat(formData.amount) * parseFloat(formData.discount) / 100)).toFixed(2)}
+      {/* EXISTING CUSTOMER SUMMARY & REWARD CARD */}
+      {step === 'existing' && lookupData && (
+        <div className="mb-6 space-y-4">
+          {/* Profile & Monthly Spend Summary */}
+          <div className="bg-gradient-to-r from-gray-50 to-gray-100 border border-gray-200 rounded-xl p-5 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center space-x-4">
+                <div className="w-13 h-13 rounded-full bg-gradient-to-tr from-primary-600 via-primary-700 to-amber-600 text-white flex items-center justify-center font-extrabold text-xl shadow-md ring-2 ring-primary-200">
+                  {formData.name ? formData.name.charAt(0).toUpperCase() : 'C'}
+                </div>
+                <div>
+                  <div className="text-lg font-bold text-gray-900">{formData.name}</div>
+                  <div className="text-sm text-gray-600 font-mono">📱 +91 {formData.contact}</div>
+                  {formData.email && (
+                    <div className="text-xs text-gray-500">✉️ {formData.email}</div>
+                  )}
+                </div>
               </div>
-            )}
-            {formData.discount && parseFloat(formData.discount) > 100 && <div className="text-xs text-red-500 mt-1">Discount cannot exceed 100%</div>}
+
+              {/* Monthly Total */}
+              <div className="sm:text-right bg-white sm:bg-transparent p-3 sm:p-0 rounded-lg border sm:border-0 border-gray-200">
+                <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  {lookupData.currentMonthName} Total
+                </div>
+                <div className="flex items-baseline sm:justify-end space-x-2">
+                  <span className="text-2xl font-extrabold text-primary-700">
+                    ₹{projectedMonthTotal.toLocaleString('en-IN')}
+                  </span>
+                  {todayNet > 0 && (
+                    <span className="text-xs font-semibold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                      +₹{todayNet.toLocaleString('en-IN')} today
+                    </span>
+                  )}
+                </div>
+                <div className="text-xs text-gray-500">
+                  Reward goal: ₹{threshold.toLocaleString('en-IN')} {todayNet > 0 && `(Past: ₹${prevMonthTotal.toLocaleString('en-IN')})`}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Reward / Gift Alert */}
+          {qualifiesWithToday ? (
+            <div className="bg-gradient-to-r from-emerald-500 to-green-600 text-white p-4 rounded-xl flex items-center space-x-3 shadow-md animate-pulse">
+              <span className="text-3xl">🎁</span>
+              <div>
+                <div className="font-bold text-base uppercase tracking-wide">
+                  🎉 Reward Unlocked With Today&apos;s Bill!
+                </div>
+                <div className="text-sm text-emerald-50 font-medium">
+                  With today&apos;s bill of ₹{todayNet.toLocaleString('en-IN')}, monthly spend reaches <strong>₹{projectedMonthTotal.toLocaleString('en-IN')}</strong> (Goal: ₹{threshold.toLocaleString('en-IN')}).
+                  <br />
+                  <span className="underline font-semibold text-white">Please offer the monthly reward/gift to the customer now!</span>
+                </div>
+              </div>
+            </div>
+          ) : alreadyHadReward ? (
+            <div className="bg-emerald-50 border-2 border-emerald-400 p-4 rounded-xl flex items-center space-x-3 text-emerald-900 shadow-sm">
+              <span className="text-3xl">🎁</span>
+              <div>
+                <div className="font-bold text-base text-emerald-800">
+                  Monthly Spend: ₹{projectedMonthTotal.toLocaleString('en-IN')}
+                </div>
+                <div className="text-sm text-emerald-700 font-medium">
+                  Customer has reached the ₹{threshold.toLocaleString('en-IN')} reward goal! Please offer the monthly reward if not already given.
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-blue-50 border border-blue-200 p-3 rounded-lg text-xs text-blue-800 flex items-center justify-between">
+              <span>
+                💡 Spent ₹{prevMonthTotal.toLocaleString('en-IN')} this month
+                {todayNet > 0 ? ` + ₹${todayNet.toLocaleString('en-IN')} today = ₹${projectedMonthTotal.toLocaleString('en-IN')}` : ''}
+                . Needs <strong className="font-semibold text-blue-900">₹{stillNeeds.toLocaleString('en-IN')}</strong> more to earn the monthly gift reward.
+              </span>
+            </div>
+          )}
+
+          {/* Previous Services History */}
+          {lookupData.history && lookupData.history.length > 0 && (
+            <details className="group border border-gray-200 rounded-xl bg-white overflow-hidden">
+              <summary className="px-4 py-3 bg-gray-50 font-medium text-sm text-gray-700 cursor-pointer flex justify-between items-center select-none">
+                <span>
+                  Previous Visits & Services ({lookupData.history.length})
+                </span>
+                <span className="text-xs text-primary-600 group-open:rotate-180 transition-transform">
+                  ▼
+                </span>
+              </summary>
+              <div className="p-4 divide-y divide-gray-100 max-h-48 overflow-y-auto">
+                {lookupData.history.map((v) => (
+                  <div key={v.id} className="py-2.5 flex justify-between items-start text-sm">
+                    <div>
+                      <div className="font-medium text-gray-800">
+                        {v.services.join(', ')}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {new Date(v.visitDate).toLocaleDateString('en-IN', {
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric',
+                        })}
+                        {v.serviceTakenBy && ` • By: ${v.serviceTakenBy}`}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-semibold text-gray-900">₹{v.finalAmount}</div>
+                      <div className="text-xs text-gray-500">{v.paymentType}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </details>
+          )}
+        </div>
+      )}
+
+      {/* NEW CUSTOMER NOTIFICATION */}
+      {step === 'new' && !initialData && (
+        <div className="mb-6 space-y-3">
+          <div className="p-3.5 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800 flex items-center justify-between">
+            <span>
+              ✨ <strong>New Customer:</strong> No past record found for <strong>+91 {formData.contact}</strong>. Please enter their details.
+            </span>
+            <button
+              type="button"
+              onClick={() => setStep('lookup')}
+              className="text-xs text-blue-600 underline hover:text-blue-900 ml-2"
+            >
+              Change Phone
+            </button>
+          </div>
+
+          {todayNet >= threshold && (
+            <div className="bg-gradient-to-r from-emerald-500 to-green-600 text-white p-4 rounded-xl flex items-center space-x-3 shadow-md animate-pulse">
+              <span className="text-3xl">🎁</span>
+              <div>
+                <div className="font-bold text-base uppercase tracking-wide">
+                  🎉 First-Visit Reward Unlocked!
+                </div>
+                <div className="text-sm text-emerald-50 font-medium">
+                  With today&apos;s bill of ₹{todayNet.toLocaleString('en-IN')}, this new customer meets the ₹{threshold.toLocaleString('en-IN')} threshold. Please offer the welcome reward!
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* MAIN FORM (TODAY'S VISIT / REGISTRATION) */}
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* SECTION 1: CUSTOMER DETAILS */}
+        <div className="bg-white border border-gray-200/80 rounded-xl p-5 shadow-xs">
+          <div className="flex items-center space-x-2 pb-3 mb-4 border-b border-gray-100">
+            <span className="text-base">👤</span>
+            <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider">
+              Customer Information
+            </h3>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Name */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1.5">
+                Customer Name *
+              </label>
+              <input
+                type="text"
+                name="name"
+                required
+                className="input-field"
+                value={formData.name}
+                onChange={handleInputChange}
+                placeholder="Full name"
+              />
+            </div>
+
+            {/* Contact */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1.5">
+                Contact Number *
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-2.5 text-gray-500 font-mono text-sm select-none font-semibold">
+                  +91
+                </span>
+                <input
+                  type="tel"
+                  name="contact"
+                  required
+                  minLength={10}
+                  maxLength={10}
+                  pattern="[0-9]{10}"
+                  className="input-field pl-12 font-mono"
+                  value={formData.contact}
+                  onChange={handleInputChange}
+                  onWheel={handleWheel}
+                  placeholder="10-digit mobile"
+                />
+              </div>
+            </div>
+
+            {/* Email */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1.5">
+                Email Address (Optional)
+              </label>
+              <input
+                type="email"
+                name="email"
+                className="input-field"
+                value={formData.email}
+                onChange={handleInputChange}
+                placeholder="customer@example.com"
+              />
+            </div>
           </div>
         </div>
 
-        {/* Services */}
+        {/* SECTION 2: BILLING & PAYMENT */}
+        <div className="bg-gradient-to-br from-amber-50/20 via-white to-gray-50 border border-gray-200/80 rounded-xl p-5 shadow-xs">
+          <div className="flex items-center justify-between pb-3 mb-4 border-b border-gray-100">
+            <div className="flex items-center space-x-2">
+              <span className="text-base">💳</span>
+              <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider">
+                {step === 'existing' ? "Today's Billing & Payment" : "Billing & Payment"}
+              </h3>
+            </div>
+            <span className="text-xs text-gray-500 font-medium">Auto-calculates monthly total</span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Amount */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1.5">
+                {step === 'existing' ? "Today's Bill Amount *" : "Bill Amount *"}
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-2.5 text-gray-400 font-medium select-none text-base">₹</span>
+                <input
+                  type="number"
+                  name="amount"
+                  required
+                  step="0.01"
+                  min="0"
+                  className={`input-field pl-8 transition-all duration-200 ${
+                    qualifiesWithToday
+                      ? '!border-2 !border-emerald-600 !bg-emerald-50/50 !text-emerald-950 font-bold focus:!ring-emerald-500 focus:!border-emerald-600'
+                      : ''
+                  }`}
+                  value={formData.amount}
+                  onChange={handleInputChange}
+                  onWheel={handleWheel}
+                  placeholder="0.00"
+                />
+                {qualifiesWithToday && (
+                  <span className="absolute right-3 top-2.5 text-lg pointer-events-none" title="Reward unlocked!">
+                    🎁
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Discount */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1.5">
+                Discount (%)
+              </label>
+              <div className="flex space-x-1.5">
+                <input
+                  type="number"
+                  name="discount"
+                  step="0.01"
+                  min="0"
+                  max="100"
+                  className="input-field flex-1"
+                  value={formData.discount}
+                  onChange={handleInputChange}
+                  onWheel={handleWheel}
+                  placeholder="0"
+                />
+                <div className="flex items-center px-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 font-bold text-xs">
+                  %
+                </div>
+              </div>
+              {formData.discount && formData.amount && (
+                <p className="text-[11px] text-gray-500 mt-1 font-medium">
+                  Net: ₹{todayNet.toLocaleString('en-IN')} (Saved ₹{((inputAmount * inputDiscount) / 100).toFixed(2)})
+                </p>
+              )}
+            </div>
+
+            {/* Payment Type */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1.5">
+                Payment Method *
+              </label>
+              <select
+                name="paymentType"
+                required
+                className="input-field font-medium"
+                value={formData.paymentType}
+                onChange={handleInputChange}
+              >
+                <option value="CASH">💵 Cash</option>
+                <option value="UPI">📱 UPI (GPay / PhonePe / Paytm)</option>
+                <option value="CARD">💳 Debit / Credit Card</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Live calculation hint under Amount */}
+          {todayNet > 0 && (
+            <div className="mt-3">
+              {qualifiesWithToday && (
+                <div className="p-3.5 bg-emerald-50 border-2 border-emerald-500 rounded-xl shadow-xs flex items-start space-x-3">
+                  <span className="text-3xl">🎁</span>
+                  <div>
+                    <div className="flex items-center space-x-2">
+                      <span className="font-extrabold text-sm text-emerald-950 tracking-wide">
+                        REWARD THRESHOLD REACHED!
+                      </span>
+                      <span className="bg-emerald-700 text-white text-[11px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                        Eligible With This Bill
+                      </span>
+                    </div>
+                    <p className="text-xs text-emerald-900 mt-1 font-medium">
+                      {prevMonthTotal > 0 && `Previous: ₹${prevMonthTotal.toLocaleString('en-IN')} + `}Today: ₹{todayNet.toLocaleString('en-IN')} = <strong className="font-black text-emerald-950 text-sm">₹{projectedMonthTotal.toLocaleString('en-IN')}</strong> (Goal: ₹{threshold.toLocaleString('en-IN')})
+                    </p>
+                    <p className="text-xs font-bold text-emerald-800 mt-1.5 flex items-center space-x-1">
+                      <span>👉</span>
+                      <span className="underline">Please offer the monthly gift reward to the customer during this checkout!</span>
+                    </p>
+                  </div>
+                </div>
+              )}
+              {!alreadyHadReward && !qualifiesWithToday && (
+                <div className="p-2.5 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-900 flex items-center justify-between">
+                  <div>
+                    <span>Month Total with this bill: </span>
+                    <strong className="text-blue-950 font-bold">₹{projectedMonthTotal.toLocaleString('en-IN')}</strong>
+                    {prevMonthTotal > 0 && (
+                      <span className="text-blue-600 text-[11px] ml-1">
+                        (₹{prevMonthTotal.toLocaleString('en-IN')} + ₹{todayNet.toLocaleString('en-IN')})
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-blue-700 font-semibold bg-blue-100 px-2 py-0.5 rounded">
+                    ₹{stillNeeds.toLocaleString('en-IN')} away from gift
+                  </span>
+                </div>
+              )}
+              {alreadyHadReward && (
+                <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-800 flex items-center space-x-1.5">
+                  <span>✓</span>
+                  <span>Already qualified for this month&apos;s reward! (New total with this bill: <strong>₹{projectedMonthTotal.toLocaleString('en-IN')}</strong>)</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Services Section */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Services *</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            {step === 'existing' ? "Today's Service(s) *" : 'Services *'}
+          </label>
           <p className="text-xs text-gray-500 mb-2">
-            Search and pick from the categorised list, or type a custom name and click <strong>+ Add Custom</strong>.
+            Search and select from the 13 categories, or type a custom service.
           </p>
 
           <div className="relative" ref={dropdownRef}>
@@ -246,9 +790,12 @@ export default function CustomerForm({ onSuccess, initialData }: CustomerFormPro
                 type="text"
                 className="input-field flex-1"
                 value={serviceQuery}
-                onChange={(e) => { setServiceQuery(e.target.value); setShowDropdown(true) }}
+                onChange={(e) => {
+                  setServiceQuery(e.target.value)
+                  setShowDropdown(true)
+                }}
                 onFocus={() => setShowDropdown(true)}
-                placeholder="Search (e.g. Eyebrow, Keratin, Bridal…)"
+                placeholder="Search service (e.g. Eyebrow, Keratin, Facial, Haircut…)"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.preventDefault()
@@ -264,22 +811,26 @@ export default function CustomerForm({ onSuccess, initialData }: CustomerFormPro
                 onClick={addCustomService}
                 disabled={!serviceQuery.trim()}
                 className="btn-secondary whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed"
-                title="Add as a custom service not in the predefined list"
+                title="Add as custom service"
               >
                 + Add Custom
               </button>
             </div>
 
+            {/* Dropdown Menu */}
             {showDropdown && (
-              <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl overflow-y-auto" style={{ maxHeight: '300px' }}>
+              <div
+                className="absolute z-50 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl overflow-y-auto"
+                style={{ maxHeight: '280px' }}
+              >
                 {filteredCategories.length === 0 ? (
                   <div className="px-4 py-3 text-sm text-gray-500 text-center">
-                    No matching services. Use <strong>+ Add Custom</strong> to add it.
+                    No matching services. Click <strong>+ Add Custom</strong> to add &quot;{serviceQuery.trim()}&quot;.
                   </div>
                 ) : (
                   filteredCategories.map((cat) => (
                     <div key={cat.category}>
-                      <div className="sticky top-0 px-3 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-100">
+                      <div className="sticky top-0 px-3 py-1.5 text-xs font-semibold text-gray-600 uppercase tracking-wider bg-gray-100 border-b border-gray-200">
                         {cat.category}
                       </div>
                       {cat.services.map((service) => {
@@ -288,11 +839,18 @@ export default function CustomerForm({ onSuccess, initialData }: CustomerFormPro
                           <button
                             key={service}
                             type="button"
-                            onMouseDown={(e) => { e.preventDefault(); selectService(service) }}
+                            onMouseDown={(e) => {
+                              e.preventDefault()
+                              selectService(service)
+                            }}
                             disabled={alreadyAdded}
-                            className={`w-full text-left px-4 py-2 text-sm transition-colors ${alreadyAdded ? 'text-gray-400 bg-gray-50 cursor-not-allowed' : 'text-gray-800 hover:bg-primary-50 hover:text-primary-800 cursor-pointer'}`}
+                            className={`w-full text-left px-4 py-2 text-sm transition-colors ${
+                              alreadyAdded
+                                ? 'text-gray-400 bg-gray-50 cursor-not-allowed'
+                                : 'text-gray-800 hover:bg-primary-50 hover:text-primary-800 cursor-pointer'
+                            }`}
                           >
-                            {alreadyAdded ? ('check ' + service) : service}
+                            {alreadyAdded ? `✓ ${service}` : service}
                           </button>
                         )
                       })}
@@ -300,30 +858,44 @@ export default function CustomerForm({ onSuccess, initialData }: CustomerFormPro
                   ))
                 )}
 
-                {serviceQuery.trim() && !ALL_KNOWN_SERVICES.some(s => s.toLowerCase() === serviceQuery.trim().toLowerCase()) && (
-                  <div className="border-t border-gray-100">
-                    <button
-                      type="button"
-                      onMouseDown={(e) => { e.preventDefault(); addCustomService() }}
-                      className="w-full text-left px-4 py-2 text-sm text-indigo-700 hover:bg-indigo-50 cursor-pointer"
-                    >
-                      + Add custom service: "{serviceQuery.trim()}"
-                    </button>
-                  </div>
-                )}
+                {serviceQuery.trim() &&
+                  !ALL_KNOWN_SERVICES.some(s => s.toLowerCase() === serviceQuery.trim().toLowerCase()) && (
+                    <div className="border-t border-gray-100 bg-gray-50">
+                      <button
+                        type="button"
+                        onMouseDown={(e) => {
+                          e.preventDefault()
+                          addCustomService()
+                        }}
+                        className="w-full text-left px-4 py-2.5 text-sm text-primary-700 hover:bg-primary-100 font-medium"
+                      >
+                        + Add &quot;{serviceQuery.trim()}&quot; as custom service
+                      </button>
+                    </div>
+                  )}
               </div>
             )}
           </div>
 
+          {/* Selected Services Tags */}
           <div className="mt-3">
             {formData.services.length === 0 ? (
-              <p className="text-xs text-gray-400 italic">No services selected yet.</p>
+              <p className="text-xs text-gray-400 italic">No services added yet for this visit.</p>
             ) : (
               <div className="flex flex-wrap gap-2">
                 {formData.services.map((service: string, index: number) => (
-                  <span key={index} className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-primary-100 text-primary-800">
+                  <span
+                    key={index}
+                    className="inline-flex items-center px-3 py-1.5 rounded-full text-sm bg-primary-100 text-primary-800 font-medium shadow-sm"
+                  >
                     {service}
-                    <button type="button" onClick={() => removeService(index)} className="ml-2 text-primary-600 hover:text-primary-800 leading-none">x</button>
+                    <button
+                      type="button"
+                      onClick={() => removeService(index)}
+                      className="ml-2 text-primary-600 hover:text-primary-900 font-bold"
+                    >
+                      ×
+                    </button>
                   </span>
                 ))}
               </div>
@@ -331,43 +903,108 @@ export default function CustomerForm({ onSuccess, initialData }: CustomerFormPro
           </div>
         </div>
 
-        {/* Service Taken By */}
+        {/* Service Taken By (Staff) */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Service Taken By (Optional - Multiple Selection)</label>
-          <div className="space-y-2 max-h-32 overflow-y-auto border border-gray-300 rounded-md p-2">
-            {staff.map((member) => (
-              <label key={member.id} className="flex items-center space-x-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={formData.serviceTakenBy.includes(member.name)}
-                  onChange={(e) => {
-                    if (e.target.checked) setFormData(prev => ({ ...prev, serviceTakenBy: [...prev.serviceTakenBy, member.name] }))
-                    else setFormData(prev => ({ ...prev, serviceTakenBy: prev.serviceTakenBy.filter((n: string) => n !== member.name) }))
-                  }}
-                  className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                />
-                <span className="text-sm text-gray-700">{member.name} - {member.position}</span>
-              </label>
-            ))}
+          <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1.5">
+            Service Provided By (Optional - Multiple Staff)
+          </label>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 max-h-36 overflow-y-auto border border-gray-200 rounded-xl p-3 bg-gray-50/70">
+            {staff.map((member) => {
+              const isSelected = formData.serviceTakenBy.includes(member.name)
+              return (
+                <label
+                  key={member.id}
+                  className={`flex items-center space-x-2 px-3 py-2 rounded-lg border text-xs cursor-pointer transition-all duration-150 select-none ${
+                    isSelected
+                      ? 'bg-primary-50 border-primary-400 text-primary-900 font-semibold shadow-xs'
+                      : 'bg-white border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setFormData(prev => ({
+                          ...prev,
+                          serviceTakenBy: [...prev.serviceTakenBy, member.name],
+                        }))
+                      } else {
+                        setFormData(prev => ({
+                          ...prev,
+                          serviceTakenBy: prev.serviceTakenBy.filter((n: string) => n !== member.name),
+                        }))
+                      }
+                    }}
+                    className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 w-3.5 h-3.5"
+                  />
+                  <div className="truncate">
+                    <span className="block font-medium truncate">{member.name}</span>
+                    <span className="block text-[10px] text-gray-400 font-normal truncate">{member.position}</span>
+                  </div>
+                </label>
+              )
+            })}
           </div>
           {formData.serviceTakenBy.length > 0 && (
-            <div className="mt-2">
-              <span className="text-sm text-gray-600">Selected: </span>
-              <span className="text-sm font-medium text-primary-600">{formData.serviceTakenBy.join(', ')}</span>
-            </div>
+            <p className="text-xs text-gray-600 mt-1.5">
+              Assigned: <strong className="text-primary-700">{formData.serviceTakenBy.join(', ')}</strong>
+            </p>
           )}
         </div>
 
         {/* Notes */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Notes (Optional)</label>
-          <textarea name="notes" rows={3} className="input-field" value={formData.notes} onChange={handleInputChange} placeholder="Enter any additional notes" />
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">Notes (Optional)</label>
+          <textarea
+            name="notes"
+            rows={2}
+            className="input-field"
+            value={formData.notes}
+            onChange={handleInputChange}
+            placeholder="Preferences, allergies, special requests..."
+          />
         </div>
 
-        <div className="flex justify-end space-x-4">
-          <button type="button" onClick={onSuccess} className="btn-secondary">Cancel</button>
-          <button type="submit" disabled={loading || formData.services.length === 0} className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed">
-            {loading ? 'Saving...' : (initialData ? 'Update Customer' : 'Add Customer')}
+        {/* Reward Alert Before Saving */}
+        {qualifiesWithToday && (
+          <div className="bg-gradient-to-r from-emerald-600 to-green-700 text-white p-3.5 rounded-xl flex items-center justify-between shadow-md">
+            <div className="flex items-center space-x-3">
+              <span className="text-2xl">🎁</span>
+              <div>
+                <p className="font-bold text-sm">Customer Qualifies For Monthly Gift Reward!</p>
+                <p className="text-xs text-emerald-100">
+                  Total spend with today&apos;s ₹{todayNet.toLocaleString('en-IN')} bill reaches <strong className="text-white underline">₹{projectedMonthTotal.toLocaleString('en-IN')}</strong> (Goal: ₹{threshold.toLocaleString('en-IN')}). Please hand over the monthly gift before customer leaves.
+                </p>
+              </div>
+            </div>
+            <span className="hidden sm:inline-block bg-white text-emerald-800 font-bold text-xs px-3 py-1 rounded-full shadow-sm whitespace-nowrap">
+              Reward Due
+            </span>
+          </div>
+        )}
+
+        {/* Actions */}
+        <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+          <button
+            type="button"
+            onClick={onSuccess}
+            className="btn-secondary"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={loading || formData.services.length === 0}
+            className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loading
+              ? 'Saving...'
+              : initialData
+              ? 'Update Record'
+              : step === 'existing'
+              ? 'Save Visit'
+              : 'Add Customer'}
           </button>
         </div>
       </form>

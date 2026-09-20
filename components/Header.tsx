@@ -58,7 +58,7 @@ export default function Header({ user, onNavigate }: HeaderProps) {
             >
               Staff
             </button>
-            {user.role === 'SUPERADMIN' && (
+            {user?.role === 'SUPERADMIN' && (
               <button
                 onClick={() => handleNavigation('/dashboard/reports')}
                 className="text-gray-600 hover:text-gray-900 font-medium"
@@ -70,10 +70,14 @@ export default function Header({ user, onNavigate }: HeaderProps) {
           
           {/* Desktop User Info */}
           <div className="hidden md:flex items-center space-x-4">
-            <span className="text-sm text-gray-600">Welcome, {user.name}</span>
-            <span className="px-2 py-1 bg-primary-100 text-primary-800 text-xs font-medium rounded-full">
-              {user.role}
-            </span>
+            {user && (
+              <>
+                <span className="text-sm text-gray-600">Welcome, {user.name}</span>
+                <span className="px-2 py-1 bg-primary-100 text-primary-800 text-xs font-medium rounded-full">
+                  {user.role}
+                </span>
+              </>
+            )}
             <button
               onClick={handleLogout}
               className="btn-secondary text-sm"
@@ -84,7 +88,7 @@ export default function Header({ user, onNavigate }: HeaderProps) {
 
           {/* Mobile Menu Button */}
           <div className="md:hidden flex items-center space-x-2">
-            <span className="text-sm text-gray-600">{user.name}</span>
+            {user && <span className="text-sm text-gray-600">{user.name}</span>}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               className="p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100"
@@ -112,7 +116,7 @@ export default function Header({ user, onNavigate }: HeaderProps) {
               >
                 Staff
               </button>
-              {user.role === 'SUPERADMIN' && (
+              {user?.role === 'SUPERADMIN' && (
                 <button
                   onClick={() => handleNavigation('/dashboard/reports')}
                   className="text-left px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md"
@@ -121,12 +125,14 @@ export default function Header({ user, onNavigate }: HeaderProps) {
                 </button>
               )}
               <div className="border-t border-gray-200 pt-4 mt-4">
-                <div className="px-4 py-2">
-                  <span className="text-sm text-gray-500">Role: </span>
-                  <span className="px-2 py-1 bg-primary-100 text-primary-800 text-xs font-medium rounded-full">
-                    {user.role}
-                  </span>
-                </div>
+                {user && (
+                  <div className="px-4 py-2">
+                    <span className="text-sm text-gray-500">Role: </span>
+                    <span className="px-2 py-1 bg-primary-100 text-primary-800 text-xs font-medium rounded-full">
+                      {user.role}
+                    </span>
+                  </div>
+                )}
                 <button
                   onClick={handleLogout}
                   className="w-full text-left px-4 py-2 text-red-600 hover:text-red-900 hover:bg-red-50 rounded-md"
