@@ -60,13 +60,13 @@ export default function Logo({ size = 'md', showText = true, user, onNavigate }:
       className="flex items-center space-x-3 hover:opacity-80 transition-opacity cursor-pointer"
     >
       {/* Logo image */}
-      <div className={`${sizeClasses[size]} flex-shrink-0`}>
+      <div className={`${sizeClasses[size]} flex-shrink-0 rounded-full overflow-hidden border border-gray-100 shadow-sm bg-white flex items-center justify-center`}>
         <Image
           src="/logo.png"
           alt="Swasthik Logo"
           width={imageSizes[size]}
           height={imageSizes[size]}
-          className="object-contain w-full h-full"
+          className="object-cover w-full h-full rounded-full"
           priority
         />
       </div>
@@ -78,7 +78,7 @@ export default function Logo({ size = 'md', showText = true, user, onNavigate }:
           </h1>
           <div className={`w-full h-0.5 my-1 bg-gradient-to-r from-transparent via-black to-transparent`}></div>
           <p className={`${taglineSizes[size]} text-gray-600 font-sans`}>
-            UNISEX SALON & ACADEMY
+            SALON & Boutique
           </p>
         </div>
       )}

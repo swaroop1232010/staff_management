@@ -16,41 +16,30 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      // Use environment variables for credentials (no fallbacks for security)
-      const validCredentials = [
-        { 
-          email: process.env.NEXT_PUBLIC_ADMIN_EMAIL, 
-          password: process.env.NEXT_PUBLIC_ADMIN_PASSWORD, 
-          role: 'SUPERADMIN', 
-          name: 'Super Admin' 
-        },
-        { 
-          email: process.env.NEXT_PUBLIC_RECEPTION_EMAIL, 
-          password: process.env.NEXT_PUBLIC_RECEPTION_PASSWORD, 
-          role: 'RECEPTIONIST', 
-          name: 'Receptionist' 
-        }
-      ].filter(cred => cred.email && cred.password) // Only include valid credentials
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      })
 
-      const user = validCredentials.find(
-        cred => cred.email === email && cred.password === password
-      )
+      const data = await response.json()
 
-      if (user) {
-        const { password: _, ...userWithoutPassword } = user
-        localStorage.setItem('user', JSON.stringify(userWithoutPassword))
+      if (response.ok && data.success) {
+        // Store display user profile for client headers
+        localStorage.setItem('user', JSON.stringify(data.user))
         toast.success('Login successful!')
-        
-        if (user.role === 'SUPERADMIN') {
+
+        if (data.user.role === 'SUPERADMIN') {
           router.push('/admin')
         } else {
           router.push('/dashboard')
         }
+        router.refresh()
       } else {
-        toast.error('Invalid credentials')
+        toast.error(data.error || 'Invalid credentials')
       }
-    } catch (error) {
-      toast.error('Login failed. Please try again.')
+    } catch {
+      toast.error('Login failed. Please check your network and try again.')
     } finally {
       setLoading(false)
     }
@@ -109,6 +98,40 @@ export default function LoginPage() {
             >
               {loading ? 'Signing in...' : 'Sign in'}
             </button>
+          </div>
+
+          <div className="pt-4 border-t border-gray-200 text-xs text-gray-500 space-y-2">
+            <div className="font-semibold text-gray-700">Quick Fill / Demo Logins:</div>
+            <div className="flex justify-between items-center bg-gray-50 p-2.5 rounded border border-gray-200">
+              <div>
+                <span className="font-medium text-gray-700">Receptionist:</span> reception@swasthik.com (pass: reception123)
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail('reception@swasthik.com')
+                  setPassword('reception123')
+                }}
+                className="text-primary-600 hover:text-primary-800 font-medium ml-2 underline"
+              >
+                Fill
+              </button>
+            </div>
+            <div className="flex justify-between items-center bg-gray-50 p-2.5 rounded border border-gray-200">
+              <div>
+                <span className="font-medium text-gray-700">Admin:</span> admin@swasthik.com (pass: admin123)
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail('admin@swasthik.com')
+                  setPassword('admin123')
+                }}
+                className="text-primary-600 hover:text-primary-800 font-medium ml-2 underline"
+              >
+                Fill
+              </button>
+            </div>
           </div>
         </form>
       </div>

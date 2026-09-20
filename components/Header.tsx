@@ -18,9 +18,15 @@ export default function Header({ user, onNavigate }: HeaderProps) {
   const router = useRouter()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' })
+    } catch (e) {
+      console.error('Logout error:', e)
+    }
     localStorage.removeItem('user')
     router.push('/login')
+    router.refresh()
   }
 
   const handleNavigation = (path: string) => {

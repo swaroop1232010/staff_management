@@ -12,11 +12,24 @@ export default function ImportExportPage() {
   useEffect(() => {
     const userData = localStorage.getItem('user')
     if (userData) {
-      const parsedUser = JSON.parse(userData)
-      setUser(parsedUser)
-    } else {
-      router.push('/login')
+      try {
+        const parsedUser = JSON.parse(userData)
+        setUser(parsedUser)
+        return
+      } catch {}
     }
+
+    fetch('/api/auth/me')
+      .then(res => res.json())
+      .then(data => {
+        if (data.user) {
+          localStorage.setItem('user', JSON.stringify(data.user))
+          setUser(data.user)
+        } else {
+          router.push('/login')
+        }
+      })
+      .catch(() => router.push('/login'))
   }, [router])
 
   if (!user) {

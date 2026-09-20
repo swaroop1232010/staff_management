@@ -64,11 +64,12 @@ Same as Option 1, but use the Supabase connection string.
 
 **For Local Development (.env.local):**
 ```env
-# REQUIRED: Set your own secure credentials
-NEXT_PUBLIC_ADMIN_EMAIL=your_admin_email@domain.com
-NEXT_PUBLIC_ADMIN_PASSWORD=your_secure_admin_password
-NEXT_PUBLIC_RECEPTION_EMAIL=your_reception_email@domain.com
-NEXT_PUBLIC_RECEPTION_PASSWORD=your_secure_reception_password
+# REQUIRED: Set your own secure credentials (Server-side only)
+JWT_SECRET=your_super_secret_jwt_key_at_least_32_characters
+ADMIN_EMAIL=your_admin_email@domain.com
+ADMIN_PASSWORD=your_secure_admin_password
+RECEPTION_EMAIL=your_reception_email@domain.com
+RECEPTION_PASSWORD=your_secure_reception_password
 
 # Optional: Database
 DATABASE_URL="your-database-connection-string"
@@ -86,10 +87,11 @@ After deployment, you need to set up credentials:
 1. Go to your deployed app
 2. **Set up your credentials in Vercel dashboard:**
    - Go to Project Settings → Environment Variables
-   - Add: `NEXT_PUBLIC_ADMIN_EMAIL` = your admin email
-   - Add: `NEXT_PUBLIC_ADMIN_PASSWORD` = your secure admin password
-   - Add: `NEXT_PUBLIC_RECEPTION_EMAIL` = your reception email
-   - Add: `NEXT_PUBLIC_RECEPTION_PASSWORD` = your secure reception password
+   - Add: `JWT_SECRET` = your secret key (at least 32 characters)
+   - Add: `ADMIN_EMAIL` = your admin email
+   - Add: `ADMIN_PASSWORD` = your secure admin password
+   - Add: `RECEPTION_EMAIL` = your reception email
+   - Add: `RECEPTION_PASSWORD` = your secure reception password
 3. **Redeploy** your app to apply the new credentials
 4. Login with your custom credentials
 5. Start adding your customer data!

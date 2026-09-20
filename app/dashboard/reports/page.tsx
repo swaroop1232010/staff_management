@@ -29,11 +29,23 @@ export default function ReportsPage() {
   const [user, setUser] = useState<any>(null)
 
   useEffect(() => {
-    // Get user from localStorage
     const userData = localStorage.getItem('user')
     if (userData) {
-      setUser(JSON.parse(userData))
+      try {
+        setUser(JSON.parse(userData))
+        return
+      } catch {}
     }
+
+    fetch('/api/auth/me')
+      .then(res => res.json())
+      .then(data => {
+        if (data.user) {
+          localStorage.setItem('user', JSON.stringify(data.user))
+          setUser(data.user)
+        }
+      })
+      .catch(() => {})
   }, [])
 
   useEffect(() => {

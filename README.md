@@ -1,6 +1,6 @@
 # Swasthik Salon Customer Management System
 
-A professional customer management system built for Swasthik Unisex Salon & Academy. This system allows receptionists to manage customer records and provides full CRUD operations for administrators.
+A professional customer management system built for Swasthik Salon & Boutique. This system allows receptionists to manage customer records and provides full CRUD operations for administrators.
 
 ## Features
 
@@ -100,13 +100,16 @@ npm run dev
 
 **For Development (.env.local):**
 ```env
-# Admin Credentials (REQUIRED - Set your own secure passwords)
-NEXT_PUBLIC_ADMIN_EMAIL=your_admin_email@domain.com
-NEXT_PUBLIC_ADMIN_PASSWORD=your_secure_admin_password_here
+# JWT Secret for session signing (REQUIRED)
+JWT_SECRET=your_super_secret_jwt_key_at_least_32_characters
 
-# Receptionist Credentials (REQUIRED - Set your own secure passwords)
-NEXT_PUBLIC_RECEPTION_EMAIL=your_reception_email@domain.com
-NEXT_PUBLIC_RECEPTION_PASSWORD=your_secure_reception_password_here
+# Admin Credentials (Server-side only)
+ADMIN_EMAIL=your_admin_email@domain.com
+ADMIN_PASSWORD=your_secure_admin_password_here
+
+# Receptionist Credentials (Server-side only)
+RECEPTION_EMAIL=your_reception_email@domain.com
+RECEPTION_PASSWORD=your_secure_reception_password_here
 
 # Database (Optional)
 DATABASE_URL="your-database-url"
@@ -178,7 +181,7 @@ DATABASE_URL="your-database-url"
 
 ## License
 
-This project is proprietary software for Swasthik Unisex Salon & Academy.
+This project is proprietary software for Swasthik Salon & Boutique.
 
 ## Support
 

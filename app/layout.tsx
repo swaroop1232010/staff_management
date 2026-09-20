@@ -7,7 +7,7 @@ const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'Swasthik Salon - Customer Management',
-  description: 'Professional customer management system for Swasthik Unisex Salon & Academy',
+  description: 'Professional customer management system for Swasthik Salon & Boutique',
 }
 
 export default function RootLayout({

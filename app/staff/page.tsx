@@ -12,16 +12,30 @@ export default function StaffPage() {
   const router = useRouter();
 
   useEffect(() => {
-    // Check if user is logged in
     const userData = localStorage.getItem('user');
     if (userData) {
-      const parsedUser = JSON.parse(userData);
-      setUser(parsedUser);
-      setIsAuthenticated(true);
-    } else {
-      router.push('/login');
+      try {
+        const parsedUser = JSON.parse(userData);
+        setUser(parsedUser);
+        setIsAuthenticated(true);
+        setLoading(false);
+        return;
+      } catch {}
     }
-    setLoading(false);
+
+    fetch('/api/auth/me')
+      .then(res => res.json())
+      .then(data => {
+        if (data.user) {
+          localStorage.setItem('user', JSON.stringify(data.user));
+          setUser(data.user);
+          setIsAuthenticated(true);
+        } else {
+          router.push('/login');
+        }
+      })
+      .catch(() => router.push('/login'))
+      .finally(() => setLoading(false));
   }, [router]);
 
   if (loading) {

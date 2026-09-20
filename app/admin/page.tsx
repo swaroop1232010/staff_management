@@ -15,16 +15,31 @@ export default function AdminPage() {
   useEffect(() => {
     const userData = localStorage.getItem('user')
     if (userData) {
-      const parsedUser = JSON.parse(userData)
-      setUser(parsedUser)
-      
-      // Redirect non-admin users
-      if (parsedUser.role !== 'SUPERADMIN') {
-        router.push('/dashboard')
-      }
-    } else {
-      router.push('/login')
+      try {
+        const parsedUser = JSON.parse(userData)
+        setUser(parsedUser)
+        if (parsedUser.role !== 'SUPERADMIN') {
+          router.push('/dashboard')
+        }
+        return
+      } catch {}
     }
+
+    // Fallback to verified server session
+    fetch('/api/auth/me')
+      .then(res => res.json())
+      .then(data => {
+        if (data.user) {
+          localStorage.setItem('user', JSON.stringify(data.user))
+          setUser(data.user)
+          if (data.user.role !== 'SUPERADMIN') {
+            router.push('/dashboard')
+          }
+        } else {
+          router.push('/login')
+        }
+      })
+      .catch(() => router.push('/login'))
   }, [router])
 
   const handleEditCustomer = (customer: any) => {

@@ -14,16 +14,31 @@ export default function DashboardPage() {
   useEffect(() => {
     const userData = localStorage.getItem('user')
     if (userData) {
-      const parsedUser = JSON.parse(userData)
-      setUser(parsedUser)
-      
-      // Redirect superadmin to admin panel
-      if (parsedUser.role === 'SUPERADMIN') {
-        router.push('/admin')
-      }
-    } else {
-      router.push('/login')
+      try {
+        const parsedUser = JSON.parse(userData)
+        setUser(parsedUser)
+        if (parsedUser.role === 'SUPERADMIN') {
+          router.push('/admin')
+        }
+        return
+      } catch {}
     }
+
+    // Fallback to verified server session
+    fetch('/api/auth/me')
+      .then(res => res.json())
+      .then(data => {
+        if (data.user) {
+          localStorage.setItem('user', JSON.stringify(data.user))
+          setUser(data.user)
+          if (data.user.role === 'SUPERADMIN') {
+            router.push('/admin')
+          }
+        } else {
+          router.push('/login')
+        }
+      })
+      .catch(() => router.push('/login'))
   }, [router])
 
   if (!user) {
