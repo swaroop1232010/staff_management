@@ -100,39 +100,6 @@ export default function LoginPage() {
             </button>
           </div>
 
-          <div className="pt-4 border-t border-gray-200 text-xs text-gray-500 space-y-2">
-            <div className="font-semibold text-gray-700">Quick Fill / Demo Logins:</div>
-            <div className="flex justify-between items-center bg-gray-50 p-2.5 rounded border border-gray-200">
-              <div>
-                <span className="font-medium text-gray-700">Receptionist:</span> reception@swasthik.com (pass: reception123)
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setEmail('reception@swasthik.com')
-                  setPassword('reception123')
-                }}
-                className="text-primary-600 hover:text-primary-800 font-medium ml-2 underline"
-              >
-                Fill
-              </button>
-            </div>
-            <div className="flex justify-between items-center bg-gray-50 p-2.5 rounded border border-gray-200">
-              <div>
-                <span className="font-medium text-gray-700">Admin:</span> admin@swasthik.com (pass: admin123)
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setEmail('admin@swasthik.com')
-                  setPassword('admin123')
-                }}
-                className="text-primary-600 hover:text-primary-800 font-medium ml-2 underline"
-              >
-                Fill
-              </button>
-            </div>
-          </div>
         </form>
       </div>
     </div>
