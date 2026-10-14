@@ -49,8 +49,9 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  let data: any;
   try {
-    const data = await request.json();
+    data = await request.json();
     
     // Validate required fields
     if (!data.name || !data.position) {
@@ -73,7 +74,6 @@ export async function PUT(
 
     return NextResponse.json(staff);
   } catch (error: any) {
-    const data = await request.json();
     if (error.code === 'P2025') {
       return NextResponse.json(
         { error: 'Staff member not found' },
@@ -82,7 +82,7 @@ export async function PUT(
     }
     
     // If database is not available, simulate update
-    if (error.code === 'P1001' || error.message?.includes('connect')) {
+    if (data && (error.code === 'P1001' || error.message?.includes('connect') || !process.env.DATABASE_URL)) {
       const updatedStaff = {
         id: params.id,
         name: data.name,

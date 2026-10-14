@@ -70,7 +70,7 @@ export default function DashboardPage() {
                   Customer Management
                 </h1>
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200/80">
-                  Exclusive Women's Salon & Boutique
+                  Exclusive Women&apos;s Salon & Boutique
                 </span>
               </div>
               <p className="text-xs sm:text-sm text-gray-500 mt-1">

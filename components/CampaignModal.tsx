@@ -425,6 +425,7 @@ export default function CampaignModal({ isOpen, onClose }: CampaignModalProps) {
                 <div className="bg-white p-3.5 rounded-xl shadow-xs text-xs font-mono leading-relaxed whitespace-pre-wrap text-gray-800 border border-gray-100 flex-1 overflow-y-auto max-h-72">
                   {imageUrl.trim() && (
                     <div className="mb-2.5 rounded-lg overflow-hidden border border-emerald-200/80 bg-gray-50 flex flex-col items-center justify-center">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={imageUrl.trim()}
                         alt="Offer Flyer Preview"

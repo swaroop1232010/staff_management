@@ -21,8 +21,9 @@ export async function GET() {
 
 // POST /api/staff - Create new staff member
 export async function POST(request: NextRequest) {
+  let data: any
   try {
-    const data = await request.json();
+    data = await request.json();
     
     // Validate required fields
     if (!data.name || !data.position) {
@@ -44,11 +45,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(staff, { status: 201 });
   } catch (error: any) {
-    const data = await request.json();
     console.error('Error creating staff:', error);
     
     // If database is not available, simulate creation with sample data
-    if (error.code === 'P1001' || error.message?.includes('connect')) {
+    if (data && (error.code === 'P1001' || error.message?.includes('connect') || !process.env.DATABASE_URL)) {
       const newStaff = {
         id: `staff_${Date.now()}`,
         name: data.name,
