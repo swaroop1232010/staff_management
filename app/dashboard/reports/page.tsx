@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subDays, subWeeks, subMonths } from 'date-fns'
 import Header from '@/components/Header'
+import EodWhatsAppModal from '@/components/EodWhatsAppModal'
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic'
@@ -29,6 +30,7 @@ const PRESET_OPTIONS = [
 export default function ReportsPage() {
   const [reportData, setReportData] = useState<ReportData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [isEodModalOpen, setIsEodModalOpen] = useState(false)
   const [timeFilter, setTimeFilter] = useState<'daily' | 'weekly' | 'monthly'>('daily')
   const [serviceFilter, setServiceFilter] = useState<string>('all')
   const [activePreset, setActivePreset] = useState<string>('today')
@@ -181,6 +183,14 @@ export default function ReportsPage() {
           </div>
           <div className="flex items-center space-x-2">
             <button
+              onClick={() => setIsEodModalOpen(true)}
+              className="flex items-center space-x-2 text-xs font-bold py-2 px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-sm hover:shadow-md transition-all cursor-pointer"
+              title="Send AI-powered End-of-Day report to Owner (+91 8501020553)"
+            >
+              <span>📱</span>
+              <span>Send EOD to Owner</span>
+            </button>
+            <button
               onClick={() => window.print()}
               className="btn-secondary flex items-center space-x-2 text-xs font-semibold py-2 px-3.5"
               title="Print or export as PDF"
@@ -265,7 +275,8 @@ export default function ReportsPage() {
                 <option value="Keratin">Keratin Treatment</option>
                 <option value="Manicure">Manicure</option>
                 <option value="Pedicure">Pedicure</option>
-                <option value="Beard Trim">Beard Trim</option>
+                <option value="Threading">Threading</option>
+                <option value="Hair Spa">Hair Spa</option>
                 <option value="Waxing">Waxing</option>
                 <option value="Makeup">Makeup</option>
               </select>
@@ -611,6 +622,11 @@ export default function ReportsPage() {
           </>
         )}
       </main>
+
+      <EodWhatsAppModal
+        isOpen={isEodModalOpen}
+        onClose={() => setIsEodModalOpen(false)}
+      />
     </div>
   )
 }

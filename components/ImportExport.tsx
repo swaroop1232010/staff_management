@@ -101,9 +101,35 @@ export default function ImportExport() {
       const data = await readFile(file)
       const customers = parseImportData(data, file.name)
       
-      setImportStats(prev => ({ ...prev, total: customers.length }))
+      if (customers.length === 0) {
+        toast.error('No valid customer records found in file. Please check format.')
+        setImporting(false)
+        return
+      }
+
+      setImportStats({ success: 0, failed: 0, total: customers.length })
       
-      // Import customers one by one
+      // Attempt fast batch import first
+      try {
+        const batchRes = await fetch('/api/customers', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(customers),
+        })
+
+        if (batchRes.ok) {
+          const batchData = await batchRes.json()
+          const count = batchData.count || customers.length
+          setImportStats({ success: count, failed: 0, total: customers.length })
+          toast.success(`Successfully imported ${count} customers!`)
+          setImporting(false)
+          return
+        }
+      } catch (batchErr) {
+        console.warn('Batch import failed, falling back to sequential import', batchErr)
+      }
+
+      // Sequential fallback
       let successCount = 0
       let failedCount = 0
       
@@ -135,10 +161,11 @@ export default function ImportExport() {
         toast.success(`Successfully imported ${successCount} out of ${customers.length} customers!`)
       }
       if (failedCount > 0) {
-        toast.error(`${failedCount} customers failed to import. Please check the data format.`)
+        toast.error(`${failedCount} customers failed to import. Please check contact numbers.`)
       }
-    } catch (error) {
-      toast.error('Error importing data')
+    } catch (error: any) {
+      console.error('Import processing error:', error)
+      toast.error(error?.message || 'Error importing data')
     } finally {
       setImporting(false)
     }
@@ -287,20 +314,39 @@ export default function ImportExport() {
             <br />
             <strong>Note:</strong> FinalAmount is automatically calculated during export.
           </p>
-          <div className="mt-3">
+          <div className="mt-4 flex flex-wrap items-center gap-3">
             <button
               onClick={() => {
                 const link = document.createElement('a')
-                link.href = '/sample-customers.csv'
-                link.download = 'sample-customers.csv'
+                link.href = '/swasthik_customers_clean.csv'
+                link.download = 'swasthik_customers_clean.csv'
                 link.click()
               }}
-              className="text-primary-600 hover:text-primary-800 text-sm font-medium flex items-center space-x-1"
+              className="text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-colors cursor-pointer"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              <span>Download Sample Template</span>
+              <span>Download Cleaned File (255 Clients)</span>
+            </button>
+
+            <button
+              onClick={async () => {
+                try {
+                  setImporting(true)
+                  const res = await fetch('/swasthik_customers_clean.csv')
+                  const blob = await res.blob()
+                  const file = new File([blob], 'swasthik_customers_clean.csv', { type: 'text/csv' })
+                  await onDrop([file])
+                } catch {
+                  toast.error('Failed to auto-load customer data')
+                  setImporting(false)
+                }
+              }}
+              disabled={importing}
+              className="text-white bg-emerald-700 hover:bg-emerald-800 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center space-x-1.5 transition-colors cursor-pointer disabled:opacity-50 shadow-xs"
+            >
+              <span>⚡ Auto-Import 255 Prepared Clients</span>
             </button>
           </div>
         </div>
@@ -331,21 +377,19 @@ function downloadCSV(csv: string, filename: string) {
   document.body.removeChild(link)
 }
 
-async function readFile(file: File): Promise<any> {
+async function readFile(file: File): Promise<any[]> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = (e) => {
       try {
-        if (file.name.endsWith('.csv')) {
-          resolve(e.target?.result)
-        } else {
-          const data = new Uint8Array(e.target?.result as ArrayBuffer)
-          const workbook = XLSX.read(data, { type: 'array' })
-          const sheetName = workbook.SheetNames[0]
-          const worksheet = workbook.Sheets[sheetName]
-          const jsonData = XLSX.utils.sheet_to_json(worksheet)
-          resolve(jsonData)
-        }
+        const buffer = e.target?.result as ArrayBuffer
+        const data = new Uint8Array(buffer)
+        // XLSX.read handles CSV, XLS, and XLSX identically with high performance
+        const workbook = XLSX.read(data, { type: 'array', cellDates: true })
+        const sheetName = workbook.SheetNames[0]
+        const worksheet = workbook.Sheets[sheetName]
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { raw: false, defval: '' })
+        resolve(jsonData as any[])
       } catch (error) {
         reject(error)
       }
@@ -355,47 +399,55 @@ async function readFile(file: File): Promise<any> {
   })
 }
 
-function parseImportData(data: any, filename: string) {
-  let customers: any[] = []
-  
-  if (filename.endsWith('.csv')) {
-    // Parse CSV data
-    const lines = (data as string).split('\n')
-    const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''))
-    
-    for (let i = 1; i < lines.length; i++) {
-      if (lines[i].trim()) {
-        const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''))
-        const customer: any = {}
-        
-        headers.forEach((header, index) => {
-          customer[header.toLowerCase()] = values[index] || ''
-        })
-        
-        customers.push(processCustomerData(customer))
-      }
-    }
-  } else {
-    // Parse Excel data
-    customers = (data as any[]).map(processCustomerData)
-  }
-  
-  return customers.filter(c => c.name && c.contact) // Filter out invalid entries
+function parseImportData(data: any[], filename: string) {
+  if (!Array.isArray(data)) return []
+  return data
+    .map(processCustomerData)
+    .filter(c => c.name && c.contact) // Ensure name & contact exist
 }
 
 function processCustomerData(customer: any) {
+  const name = String(customer.name || customer.Name || '').trim()
+  const rawContact = customer.contact !== undefined ? customer.contact : (customer.Contact !== undefined ? customer.Contact : '')
+  const contact = String(rawContact).trim()
+
+  const rawServices = customer.services !== undefined ? customer.services : (customer.Services !== undefined ? customer.Services : '')
+  let services: string[] = []
+  if (Array.isArray(rawServices)) {
+    services = rawServices.map((s: any) => String(s).trim()).filter(Boolean)
+  } else if (typeof rawServices === 'string') {
+    const trimmed = rawServices.trim()
+    if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+      try {
+        const parsed = JSON.parse(trimmed)
+        services = Array.isArray(parsed) ? parsed.map(String).map((s: any) => s.trim()).filter(Boolean) : [String(parsed).trim()]
+      } catch {
+        services = [trimmed]
+      }
+    } else if (trimmed.includes(';')) {
+      services = trimmed.split(';').map(s => s.trim()).filter(Boolean)
+    } else if (trimmed.length > 0) {
+      services = [trimmed]
+    }
+  }
+
+  const rawStaff = customer.servicetakenby !== undefined ? customer.servicetakenby : (customer.ServiceTakenBy !== undefined ? customer.ServiceTakenBy : '')
+  const rawAmount = customer.amount !== undefined ? customer.amount : (customer.Amount !== undefined ? customer.Amount : '0')
+  const rawDiscount = customer.discount !== undefined ? customer.discount : (customer.Discount !== undefined ? customer.Discount : '0')
+  const rawPayment = customer.paymenttype !== undefined ? customer.paymenttype : (customer.PaymentType !== undefined ? customer.PaymentType : 'CASH')
+  const rawDate = customer.visitdate !== undefined ? customer.visitdate : (customer.VisitDate !== undefined ? customer.VisitDate : '')
+  const rawNotes = customer.notes !== undefined ? customer.notes : (customer.Notes !== undefined ? customer.Notes : '')
+
   return {
-    name: customer.name || customer.Name || '',
-    contact: customer.contact || customer.Contact || '',
+    name,
+    contact,
     email: customer.email || customer.Email || '',
-    services: customer.services ? 
-      (customer.services.includes(';') ? 
-        customer.services.split(';').map((s: string) => s.trim()) : 
-        [customer.services]) : 
-      [],
-    amount: parseFloat(customer.amount || customer.Amount || '0'),
-    discount: parseFloat(customer.discount || customer.Discount || '0'),
-    paymentType: (customer.paymenttype || customer.PaymentType || 'CASH').toUpperCase(),
-    notes: customer.notes || customer.Notes || ''
+    services: services.length > 0 ? services : ['Salon Service'],
+    serviceTakenBy: rawStaff,
+    amount: parseFloat(String(rawAmount || '0')) || 0,
+    discount: parseFloat(String(rawDiscount || '0')) || 0,
+    paymentType: String(rawPayment || 'CASH').trim().toUpperCase(),
+    visitDate: rawDate || new Date().toISOString(),
+    notes: rawNotes || ''
   }
 }

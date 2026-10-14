@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { verifyJWT, AUTH_COOKIE_NAME } from './lib/auth'
 
 export async function middleware(request: NextRequest) {
@@ -20,8 +20,14 @@ export async function middleware(request: NextRequest) {
 
   // 2. Protected API Routes
   if (isApiRoute) {
-    // Allow public access to auth endpoints and health check
-    if (pathname.startsWith('/api/auth/') || pathname.startsWith('/api/init-db')) {
+    // Allow public access to auth endpoints, health check, EOD cron, and campaigns
+    if (
+      pathname.startsWith('/api/auth/') ||
+      pathname.startsWith('/api/init-db') ||
+      pathname.startsWith('/api/reports/eod') ||
+      pathname.startsWith('/api/campaigns') ||
+      pathname.startsWith('/api/cron/')
+    ) {
       return NextResponse.next()
     }
 
