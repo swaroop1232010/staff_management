@@ -237,6 +237,10 @@ export function segmentCustomers(rawCustomers: any[]): {
     const categoryInfo = SEGMENT_DEFINITIONS[primaryCategory] || SEGMENT_DEFINITIONS.general
     const message = buildTargetedMessage(c.name || 'Guest', primaryCategory)
 
+    const grossSpent = Number(c.amount) || 0
+    const discountPct = Number(c.discount) || 0
+    const netSpent = discountPct > 0 ? Math.max(0, grossSpent - (grossSpent * discountPct) / 100) : grossSpent
+
     const customerObj: SegmentedCustomer = {
       id: c.id,
       name: c.name || 'Valued Guest',
@@ -246,7 +250,7 @@ export function segmentCustomers(rawCustomers: any[]): {
       primaryCategory,
       categoryLabel: categoryInfo.label,
       lastVisitDate: c.visitDate || c.createdAt,
-      totalSpent: Number(c.amount) || 0,
+      totalSpent: netSpent,
       personalizedMessage: message,
     }
 

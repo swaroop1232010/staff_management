@@ -53,8 +53,19 @@ export async function GET(request: NextRequest) {
       })
     }
 
+    // Helper to calculate net final amount paid after discount
+    const getCustomerFinalAmount = (c: any): number => {
+      const gross = Number(c.amount) || 0
+      const discountPercent = Number(c.discount) || 0
+      if (discountPercent > 0) {
+        const discountVal = (gross * discountPercent) / 100
+        return Math.max(0, gross - discountVal)
+      }
+      return gross
+    }
+
     // Calculate totals
-    const totalAmount = customers.reduce((sum, customer) => sum + customer.amount, 0)
+    const totalAmount = customers.reduce((sum, customer) => sum + getCustomerFinalAmount(customer), 0)
     const totalCustomers = customers.length
     const averageAmount = totalCustomers > 0 ? totalAmount / totalCustomers : 0
 
@@ -95,12 +106,13 @@ export async function GET(request: NextRequest) {
             staffMembers = [customer.serviceTakenBy]
           }
           
+          const netAmt = getCustomerFinalAmount(customer)
           // Add each staff member to the breakdown
           staffMembers.forEach(staff => {
             const existing = staffMap.get(staff) || { count: 0, amount: 0 }
             staffMap.set(staff, {
               count: existing.count + 1,
-              amount: existing.amount + customer.amount
+              amount: existing.amount + Math.round(netAmt / staffMembers.length)
             })
           })
         } catch (error) {
@@ -118,10 +130,11 @@ export async function GET(request: NextRequest) {
     // Payment type breakdown
     const paymentMap = new Map<string, { count: number; amount: number }>()
     customers.forEach(customer => {
+      const netAmt = getCustomerFinalAmount(customer)
       const existing = paymentMap.get(customer.paymentType) || { count: 0, amount: 0 }
       paymentMap.set(customer.paymentType, {
         count: existing.count + 1,
-        amount: existing.amount + customer.amount
+        amount: existing.amount + netAmt
       })
     })
 
@@ -139,7 +152,7 @@ export async function GET(request: NextRequest) {
     
     if (timeFilter === 'daily' || isSameDay) {
       // Single day - use all customers from the query
-      const dayAmount = customers.reduce((sum, customer) => sum + customer.amount, 0)
+      const dayAmount = customers.reduce((sum, customer) => sum + getCustomerFinalAmount(customer), 0)
       dailyData.push({
         date: startDate,
         amount: dayAmount,
@@ -157,7 +170,7 @@ export async function GET(request: NextRequest) {
           return customerDate >= dayStart && customerDate <= dayEnd
         })
         
-        const dayAmount = dayCustomers.reduce((sum, customer) => sum + customer.amount, 0)
+        const dayAmount = dayCustomers.reduce((sum, customer) => sum + getCustomerFinalAmount(customer), 0)
         
         dailyData.push({
           date: format(day, 'yyyy-MM-dd'),

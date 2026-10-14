@@ -99,16 +99,27 @@ export async function generateStaffManagementEodReport(
     }
   }
 
+  // Helper to get net final amount paid after discount
+  const getCustomerFinalAmount = (c: any): number => {
+    const gross = Number(c.amount) || 0
+    const discountPercent = Number(c.discount) || 0
+    if (discountPercent > 0) {
+      const discountVal = (gross * discountPercent) / 100
+      return Math.max(0, gross - discountVal)
+    }
+    return gross
+  }
+
   customers = customers || []
   const totalWalkins = customers.length
-  const totalRevenue = customers.reduce((sum, c) => sum + (Number(c.amount) || 0), 0)
+  const totalRevenue = customers.reduce((sum, c) => sum + getCustomerFinalAmount(c), 0)
   const averageAmount = totalWalkins > 0 ? Math.round(totalRevenue / totalWalkins) : 0
 
   // Payment breakdown
   const paymentBreakdown = { cash: 0, upi: 0, card: 0 }
   customers.forEach((c) => {
     const pType = (c.paymentType || '').toUpperCase()
-    const amt = Number(c.amount) || 0
+    const amt = getCustomerFinalAmount(c)
     if (pType.includes('UPI')) paymentBreakdown.upi += amt
     else if (pType.includes('CARD')) paymentBreakdown.card += amt
     else paymentBreakdown.cash += amt
@@ -173,7 +184,7 @@ export async function generateStaffManagementEodReport(
           const existing = staffMap.get(name) || { count: 0, amount: 0 }
           staffMap.set(name, {
             count: existing.count + 1,
-            amount: existing.amount + Math.round((customer.amount || 0) / staffList.length),
+            amount: existing.amount + Math.round(getCustomerFinalAmount(customer) / staffList.length),
           })
         }
       })
