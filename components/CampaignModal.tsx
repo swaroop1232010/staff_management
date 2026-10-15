@@ -135,27 +135,16 @@ export default function CampaignModal({ isOpen, onClose }: CampaignModalProps) {
         setCustomers(loadedCustomers)
         setSummary(data.segmentsSummary || {})
 
-        // Read currently stored sent IDs
-        let currentSent = new Set<string>()
-        if (typeof window !== 'undefined') {
-          try {
-            const stored = localStorage.getItem('swasthik_campaign_sent_ids')
-            if (stored) {
-              const parsed = JSON.parse(stored)
-              if (Array.isArray(parsed)) currentSent = new Set(parsed)
-            }
-          } catch {
-            // ignore
-          }
-        }
-
         // Live synchronize with UltraMsg gateway delivery history
         const ultra = data.ultraHistory
+        let currentSent = new Set<string>()
+
         if (ultra) {
           if (Array.isArray(ultra.sent)) {
-            ultra.sent.forEach((phone: string) => {
-              currentSent.add(phone)
-            })
+            // UltraMsg is the true source of truth:
+            // ONLY numbers actually delivered by UltraMsg (status: 'sent') receive the protected tick.
+            // Any contacts cleared or deleted from the UltraMsg queue are NOT sent, so they remain unlocked & sendable!
+            currentSent = new Set(ultra.sent)
             try {
               localStorage.setItem(
                 'swasthik_campaign_sent_ids',
@@ -183,6 +172,17 @@ export default function CampaignModal({ isOpen, onClose }: CampaignModalProps) {
             })
           }
           setUnsentPhoneMap(newUnsentMap)
+        } else if (typeof window !== 'undefined') {
+          // Fallback to localStorage only if UltraMsg gateway is unreachable
+          try {
+            const stored = localStorage.getItem('swasthik_campaign_sent_ids')
+            if (stored) {
+              const parsed = JSON.parse(stored)
+              if (Array.isArray(parsed)) currentSent = new Set(parsed)
+            }
+          } catch {
+            // ignore
+          }
         }
 
         setSentCustomerIds(new Set(currentSent))
