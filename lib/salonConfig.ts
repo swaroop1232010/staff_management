@@ -25,4 +25,7 @@ export const SALON_CONFIG = {
   bookingPhone: "9110365226",
   ownerPhone: "+91 8501020553",
   ownerWhatsAppFormatted: "918501020553",
+
+  // Default Promotional Campaign Flyer Image
+  defaultCampaignFlyerUrl: "https://res.cloudinary.com/dj4rvlmde/image/upload/v1792040023/combo_offers_lv4ljm.jpg",
 }

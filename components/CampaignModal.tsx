@@ -54,7 +54,7 @@ export default function CampaignModal({ isOpen, onClose }: CampaignModalProps) {
   const [unsentPhoneMap, setUnsentPhoneMap] = useState<Map<string, string>>(new Map())
   const [previewCustomer, setPreviewCustomer] = useState<SegmentCustomer | null>(null)
   const [customOfferText, setCustomOfferText] = useState(DEFAULT_BEAUTY_COMBO_OFFER)
-  const [imageUrl, setImageUrl] = useState('')
+  const [imageUrl, setImageUrl] = useState(SALON_CONFIG.defaultCampaignFlyerUrl)
   const [progress, setProgress] = useState<{ current: number; total: number } | null>(null)
   const [results, setResults] = useState<any[] | null>(null)
   const [alert, setAlert] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
@@ -572,14 +572,26 @@ export default function CampaignModal({ isOpen, onClose }: CampaignModalProps) {
                 <label className="text-[11px] font-bold text-emerald-950 flex items-center gap-1.5">
                   <span>🖼️</span> Attach Offer Flyer Image (Optional)
                 </label>
-                {imageUrl && (
-                  <button
-                    onClick={() => setImageUrl('')}
-                    className="text-[10px] text-red-600 hover:underline font-semibold cursor-pointer"
-                  >
-                    Clear Image
-                  </button>
-                )}
+                <div className="flex items-center gap-2">
+                  {imageUrl !== SALON_CONFIG.defaultCampaignFlyerUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setImageUrl(SALON_CONFIG.defaultCampaignFlyerUrl)}
+                      className="text-[10px] text-emerald-700 hover:underline font-semibold cursor-pointer"
+                    >
+                      Default Flyer
+                    </button>
+                  )}
+                  {imageUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setImageUrl('')}
+                      className="text-[10px] text-red-600 hover:underline font-semibold cursor-pointer"
+                    >
+                      Clear Image
+                    </button>
+                  )}
+                </div>
               </div>
               <input
                 type="url"
