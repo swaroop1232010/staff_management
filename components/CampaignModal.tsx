@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { SALON_CONFIG } from '@/lib/salonConfig'
 
 interface CampaignModalProps {
@@ -35,11 +35,14 @@ ${SALON_CONFIG.instagramUrl}
 export default function CampaignModal({ isOpen, onClose }: CampaignModalProps) {
   const [loading, setLoading] = useState(false)
   const [sending, setSending] = useState(false)
+  const stopRequestedRef = useRef(false)
   const [customers, setCustomers] = useState<SegmentCustomer[]>([])
   const [summary, setSummary] = useState<Record<string, number>>({})
   const [selectedSegment, setSelectedSegment] = useState<string>('all')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [sentCustomerIds, setSentCustomerIds] = useState<Set<string>>(new Set())
+  const [invalidPhoneMap, setInvalidPhoneMap] = useState<Map<string, string>>(new Map())
+  const [unsentPhoneMap, setUnsentPhoneMap] = useState<Map<string, string>>(new Map())
   const [previewCustomer, setPreviewCustomer] = useState<SegmentCustomer | null>(null)
   const [customOfferText, setCustomOfferText] = useState(DEFAULT_BEAUTY_COMBO_OFFER)
   const [imageUrl, setImageUrl] = useState('')
@@ -64,12 +67,46 @@ export default function CampaignModal({ isOpen, onClose }: CampaignModalProps) {
     }
   }, [isOpen])
 
+  const getCleanPhone = (c: SegmentCustomer) => (c.contact ? c.contact.replace(/\D/g, '') : '')
+  const getTenDigit = (c: SegmentCustomer) => {
+    const clean = getCleanPhone(c)
+    return clean.length >= 10 ? clean.slice(-10) : clean
+  }
+
   const isCustomerSent = useCallback(
     (c: SegmentCustomer) => {
-      const cleanPhone = c.contact ? c.contact.replace(/\D/g, '') : ''
-      return sentCustomerIds.has(c.id) || (cleanPhone ? sentCustomerIds.has(cleanPhone) : false)
+      const cleanPhone = getCleanPhone(c)
+      const tenDigit = getTenDigit(c)
+      return (
+        sentCustomerIds.has(c.id) ||
+        (cleanPhone ? sentCustomerIds.has(cleanPhone) : false) ||
+        (tenDigit ? sentCustomerIds.has(tenDigit) : false)
+      )
     },
     [sentCustomerIds]
+  )
+
+  const getCustomerInvalidReason = useCallback(
+    (c: SegmentCustomer) => {
+      const cleanPhone = getCleanPhone(c)
+      const tenDigit = getTenDigit(c)
+      if (!cleanPhone || cleanPhone.length < 10) return 'Invalid phone number (< 10 digits)'
+      if (invalidPhoneMap.has(tenDigit)) return invalidPhoneMap.get(tenDigit)
+      if (invalidPhoneMap.has(cleanPhone)) return invalidPhoneMap.get(cleanPhone)
+      return null
+    },
+    [invalidPhoneMap]
+  )
+
+  const getCustomerUnsentReason = useCallback(
+    (c: SegmentCustomer) => {
+      const cleanPhone = getCleanPhone(c)
+      const tenDigit = getTenDigit(c)
+      if (unsentPhoneMap.has(tenDigit)) return unsentPhoneMap.get(tenDigit)
+      if (unsentPhoneMap.has(cleanPhone)) return unsentPhoneMap.get(cleanPhone)
+      return null
+    },
+    [unsentPhoneMap]
   )
 
   const getCustomerFinalMessage = (c: SegmentCustomer) => {
@@ -109,12 +146,53 @@ export default function CampaignModal({ isOpen, onClose }: CampaignModalProps) {
           }
         }
 
-        // Auto-select only the first 10 eligible unsent customers instead of mass-selecting all
-        const unsent = loadedCustomers.filter((c) => {
+        // Live synchronize with UltraMsg gateway delivery history
+        const ultra = data.ultraHistory
+        if (ultra) {
+          if (Array.isArray(ultra.sent)) {
+            ultra.sent.forEach((phone: string) => {
+              currentSent.add(phone)
+            })
+            try {
+              localStorage.setItem(
+                'swasthik_campaign_sent_ids',
+                JSON.stringify(Array.from(currentSent))
+              )
+            } catch (e) {
+              console.warn(e)
+            }
+          }
+
+          // Populate invalid contacts from UltraMsg
+          const newInvalidMap = new Map<string, string>()
+          if (Array.isArray(ultra.invalid)) {
+            ultra.invalid.forEach((item: { phone: string; reason?: string }) => {
+              if (item.phone) newInvalidMap.set(item.phone, item.reason || 'Invalid WhatsApp contact')
+            })
+          }
+          setInvalidPhoneMap(newInvalidMap)
+
+          // Populate unsent contacts from UltraMsg
+          const newUnsentMap = new Map<string, string>()
+          if (Array.isArray(ultra.unsent)) {
+            ultra.unsent.forEach((item: { phone: string; reason?: string }) => {
+              if (item.phone) newUnsentMap.set(item.phone, item.reason || 'UltraMsg delivery error')
+            })
+          }
+          setUnsentPhoneMap(newUnsentMap)
+        }
+
+        setSentCustomerIds(new Set(currentSent))
+
+        // Auto-select only the first 10 eligible unsent & valid customers
+        const unsentAndValid = loadedCustomers.filter((c) => {
           const clean = c.contact ? c.contact.replace(/\D/g, '') : ''
-          return !currentSent.has(c.id) && (!clean || !currentSent.has(clean))
+          const ten = clean.length >= 10 ? clean.slice(-10) : clean
+          const isSent = currentSent.has(c.id) || (clean && currentSent.has(clean)) || (ten && currentSent.has(ten))
+          const isInvalid = !clean || clean.length < 10 || (ultra?.invalid && ultra.invalid.some((inv: any) => inv.phone === ten || inv.phone === clean))
+          return !isSent && !isInvalid
         })
-        setSelectedIds(new Set(unsent.slice(0, 10).map((c) => c.id)))
+        setSelectedIds(new Set(unsentAndValid.slice(0, 10).map((c) => c.id)))
 
         if (loadedCustomers.length > 0) {
           setPreviewCustomer(loadedCustomers[0])
@@ -139,7 +217,7 @@ export default function CampaignModal({ isOpen, onClose }: CampaignModalProps) {
 
   const toggleSelectCustomer = (id: string) => {
     const c = customers.find((item) => item.id === id)
-    if (c && isCustomerSent(c)) return // Readonly: cannot toggle already sent customers
+    if (c && (isCustomerSent(c) || getCustomerInvalidReason(c))) return
 
     const next = new Set(selectedIds)
     if (next.has(id)) {
@@ -151,15 +229,17 @@ export default function CampaignModal({ isOpen, onClose }: CampaignModalProps) {
   }
 
   // Batch selection helpers: select first 10, 50, all unsent, or clear
+  const eligibleCustomers = customers.filter(
+    (c) => !isCustomerSent(c) && !getCustomerInvalidReason(c)
+  )
+
   const handleSelectBatch = (count: number) => {
-    const unsent = customers.filter((c) => !isCustomerSent(c))
-    const batch = unsent.slice(0, count).map((c) => c.id)
+    const batch = eligibleCustomers.slice(0, count).map((c) => c.id)
     setSelectedIds(new Set(batch))
   }
 
   const handleSelectAllUnsent = () => {
-    const unsent = customers.filter((c) => !isCustomerSent(c))
-    setSelectedIds(new Set(unsent.map((c) => c.id)))
+    setSelectedIds(new Set(eligibleCustomers.map((c) => c.id)))
   }
 
   const handleClearSelection = () => {
@@ -186,14 +266,14 @@ export default function CampaignModal({ isOpen, onClose }: CampaignModalProps) {
   }
 
   const unsentCustomers = customers.filter((c) => !isCustomerSent(c))
-  const allUnsentSelected =
-    unsentCustomers.length > 0 && unsentCustomers.every((c) => selectedIds.has(c.id))
+  const allEligibleSelected =
+    eligibleCustomers.length > 0 && eligibleCustomers.every((c) => selectedIds.has(c.id))
 
   const toggleSelectAll = () => {
-    if (allUnsentSelected) {
+    if (allEligibleSelected) {
       setSelectedIds(new Set())
     } else {
-      setSelectedIds(new Set(unsentCustomers.map((c) => c.id)))
+      setSelectedIds(new Set(eligibleCustomers.map((c) => c.id)))
     }
   }
 
@@ -216,74 +296,126 @@ export default function CampaignModal({ isOpen, onClose }: CampaignModalProps) {
     }
 
     const sendList = testOnly ? targets.slice(0, 1) : targets
+    stopRequestedRef.current = false
 
     try {
       setSending(true)
       setAlert(null)
       setProgress({ current: 0, total: sendList.length })
 
-      const res = await fetch('/api/campaigns/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          recipients: sendList,
-          imageUrl: imageUrl.trim(),
-          testOnly,
-        }),
-      })
+      const liveResults: any[] = []
+      let successCount = 0
 
-      const data = await res.json()
-      if (data.success) {
-        setResults(data.results || [])
-
-        // Save successfully messaged customer IDs & phone numbers to prevent duplicate sends
-        const newlySent: string[] = []
-        if (Array.isArray(data.results)) {
-          data.results.forEach((r: any) => {
-            if (r.success) {
-              if (r.id) newlySent.push(r.id)
-              if (r.contact) newlySent.push(r.contact.replace(/\D/g, ''))
-            }
+      for (let i = 0; i < sendList.length; i++) {
+        // Check if user clicked Stop
+        if (stopRequestedRef.current) {
+          setAlert({
+            type: 'success',
+            message: `⏸️ Campaign stopped by user. Delivered to ${successCount} customers. Their checkboxes are locked and protected.`,
           })
-        } else {
-          sendList.forEach((c) => {
-            newlySent.push(c.id)
-            if (c.contact) newlySent.push(c.contact.replace(/\D/g, ''))
-          })
+          break
         }
 
-        setSentCustomerIds((prev) => {
-          const updated = new Set(prev)
-          newlySent.forEach((id) => updated.add(id))
-          try {
-            localStorage.setItem(
-              'swasthik_campaign_sent_ids',
-              JSON.stringify(Array.from(updated))
-            )
-          } catch (e) {
-            console.warn(e)
+        const recipient = sendList[i]
+        setProgress({ current: i + 1, total: sendList.length })
+
+        try {
+          // Send 1 contact at a time to prevent serverless timeout & give real-time progress
+          const res = await fetch('/api/campaigns/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              recipients: [recipient],
+              imageUrl: imageUrl.trim(),
+              testOnly: false,
+            }),
+          })
+
+          const data = await res.json()
+          const singleResult = data.results?.[0] || {
+            id: recipient.id,
+            name: recipient.name,
+            contact: recipient.contact,
+            success: Boolean(data.success),
+            error: data.error || (data.success ? undefined : 'Delivery failed'),
           }
-          return updated
-        })
 
-        // Uncheck sent customers so they can't be selected again
-        setSelectedIds((prev) => {
-          const next = new Set(prev)
-          newlySent.forEach((id) => next.delete(id))
-          return next
-        })
+          liveResults.push(singleResult)
+          setResults([...liveResults])
 
+          if (singleResult.success) {
+            successCount++
+            const cleanPhone = recipient.contact ? recipient.contact.replace(/\D/g, '') : ''
+            const tenDigit = cleanPhone.length >= 10 ? cleanPhone.slice(-10) : cleanPhone
+
+            // 1. Immediately update state so UI gets "✓ Sent (Protected)" tick
+            setSentCustomerIds((prev) => {
+              const updated = new Set(prev)
+              if (recipient.id) updated.add(recipient.id)
+              if (cleanPhone) updated.add(cleanPhone)
+              if (tenDigit) updated.add(tenDigit)
+              try {
+                localStorage.setItem(
+                  'swasthik_campaign_sent_ids',
+                  JSON.stringify(Array.from(updated))
+                )
+              } catch (e) {
+                console.warn(e)
+              }
+              return updated
+            })
+
+            // 2. Immediately uncheck from selectedIds so it cannot be resent
+            setSelectedIds((prev) => {
+              const next = new Set(prev)
+              next.delete(recipient.id)
+              return next
+            })
+          } else {
+            // Track unsent or invalid reason
+            const cleanPhone = recipient.contact ? recipient.contact.replace(/\D/g, '') : ''
+            const tenDigit = cleanPhone.length >= 10 ? cleanPhone.slice(-10) : cleanPhone
+            const errStr = (singleResult.error || '').toLowerCase()
+            if (errStr.includes('invalid') || cleanPhone.length < 10) {
+              setInvalidPhoneMap((prev) => new Map(prev).set(tenDigit, singleResult.error || 'Invalid contact'))
+            } else {
+              setUnsentPhoneMap((prev) => new Map(prev).set(tenDigit, singleResult.error || 'UltraMsg delivery error'))
+            }
+          }
+        } catch (itemErr: any) {
+          const failedResult = {
+            id: recipient.id,
+            name: recipient.name,
+            contact: recipient.contact,
+            success: false,
+            error: itemErr?.message || 'Network error',
+          }
+          liveResults.push(failedResult)
+          setResults([...liveResults])
+
+          const cleanPhone = recipient.contact ? recipient.contact.replace(/\D/g, '') : ''
+          const tenDigit = cleanPhone.length >= 10 ? cleanPhone.slice(-10) : cleanPhone
+          setUnsentPhoneMap((prev) => new Map(prev).set(tenDigit, itemErr?.message || 'Network error'))
+        }
+
+        // Pacing delay (500ms) between dispatches to maintain safe delivery rhythm & avoid rate-limits
+        if (i < sendList.length - 1 && !stopRequestedRef.current) {
+          await new Promise((resolve) => setTimeout(resolve, 500))
+        }
+      }
+
+      if (!stopRequestedRef.current) {
         setAlert({
-          type: 'success',
+          type: successCount > 0 ? 'success' : 'error',
           message: testOnly
-            ? `✅ Test campaign message sent successfully to ${sendList[0]?.name} (${sendList[0]?.contact})!`
-            : `🎉 Campaign delivered to ${data.sentCount} customers successfully! Checkboxes are now locked for messaged clients.`,
+            ? (successCount > 0
+                ? `✅ Test campaign message delivered to ${sendList[0]?.name} (${sendList[0]?.contact})!`
+                : `❌ Failed delivering test message to ${sendList[0]?.name}`)
+            : `🎉 Campaign delivered to ${successCount} of ${sendList.length} customers successfully! Checkboxes are locked with ✓ Sent (Protected).`,
         })
-      } else {
-        setAlert({ type: 'error', message: data.error || 'Failed sending campaign via UltraMsg' })
       }
     } catch {
-      setAlert({ type: 'error', message: 'Network error during campaign dispatch' })
+      setAlert({ type: 'error', message: 'Unexpected error during campaign dispatch' })
     } finally {
       setSending(false)
       setProgress(null)
@@ -461,18 +593,18 @@ export default function CampaignModal({ isOpen, onClose }: CampaignModalProps) {
                 <div className="flex items-center gap-2">
                   <input
                     type="checkbox"
-                    checked={unsentCustomers.length > 0 && allUnsentSelected}
-                    disabled={unsentCustomers.length === 0}
+                    checked={eligibleCustomers.length > 0 && allEligibleSelected}
+                    disabled={eligibleCustomers.length === 0}
                     onChange={toggleSelectAll}
                     className="w-4 h-4 rounded text-emerald-600 cursor-pointer disabled:opacity-40"
                     title={
-                      unsentCustomers.length === 0
-                        ? 'All clients in this segment have already received the campaign'
-                        : 'Select / Deselect all unsent clients'
+                      eligibleCustomers.length === 0
+                        ? 'All valid clients in this segment have already received the campaign'
+                        : 'Select / Deselect all eligible clients'
                     }
                   />
                   <span className="text-xs font-bold text-gray-700">
-                    Selected ({selectedIds.size} of {unsentCustomers.length} unsent)
+                    Selected ({selectedIds.size} of {eligibleCustomers.length} eligible)
                   </span>
                 </div>
 
@@ -482,27 +614,27 @@ export default function CampaignModal({ isOpen, onClose }: CampaignModalProps) {
                   <button
                     type="button"
                     onClick={() => handleSelectBatch(10)}
-                    disabled={unsentCustomers.length === 0}
+                    disabled={eligibleCustomers.length === 0}
                     className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-300 transition-colors shadow-2xs cursor-pointer disabled:opacity-40"
-                    title="Quick check first 10 unsent customers"
+                    title="Quick check first 10 eligible customers"
                   >
                     10 Clients
                   </button>
                   <button
                     type="button"
                     onClick={() => handleSelectBatch(50)}
-                    disabled={unsentCustomers.length === 0}
+                    disabled={eligibleCustomers.length === 0}
                     className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-300 transition-colors shadow-2xs cursor-pointer disabled:opacity-40"
-                    title="Quick check first 50 unsent customers"
+                    title="Quick check first 50 eligible customers"
                   >
                     50 Clients
                   </button>
                   <button
                     type="button"
                     onClick={handleSelectAllUnsent}
-                    disabled={unsentCustomers.length === 0}
+                    disabled={eligibleCustomers.length === 0}
                     className="px-2 py-1 text-[11px] font-medium rounded-lg bg-white text-gray-700 hover:bg-gray-100 border border-gray-200 transition-colors cursor-pointer disabled:opacity-40"
-                    title="Check all unsent customers"
+                    title="Check all eligible customers"
                   >
                     All
                   </button>
@@ -529,7 +661,7 @@ export default function CampaignModal({ isOpen, onClose }: CampaignModalProps) {
 
               {loading ? (
                 <div className="p-8 text-center text-gray-400 text-xs">
-                  Loading segment contacts...
+                  Loading segment contacts & syncing live UltraMsg history...
                 </div>
               ) : customers.length === 0 ? (
                 <div className="p-8 text-center text-gray-400 text-xs">
@@ -539,7 +671,11 @@ export default function CampaignModal({ isOpen, onClose }: CampaignModalProps) {
                 <div className="divide-y divide-gray-100 max-h-72 overflow-y-auto">
                   {customers.map((c) => {
                     const isSent = isCustomerSent(c)
-                    const isSelected = selectedIds.has(c.id) && !isSent
+                    const invalidReason = getCustomerInvalidReason(c)
+                    const unsentReason = getCustomerUnsentReason(c)
+                    const isInvalid = Boolean(invalidReason)
+                    const isDisabled = isSent || isInvalid
+                    const isSelected = selectedIds.has(c.id) && !isDisabled
                     const isPreviewed = previewCustomer?.id === c.id
 
                     return (
@@ -551,6 +687,10 @@ export default function CampaignModal({ isOpen, onClose }: CampaignModalProps) {
                             ? 'bg-emerald-50/80'
                             : isSent
                             ? 'bg-gray-50/70 opacity-80'
+                            : isInvalid
+                            ? 'bg-amber-50/40'
+                            : unsentReason
+                            ? 'bg-rose-50/40'
                             : 'hover:bg-gray-50'
                         }`}
                       >
@@ -558,31 +698,47 @@ export default function CampaignModal({ isOpen, onClose }: CampaignModalProps) {
                           <input
                             type="checkbox"
                             checked={isSelected}
-                            disabled={isSent}
+                            disabled={isDisabled}
                             onClick={(e) => e.stopPropagation()}
-                            onChange={() => !isSent && toggleSelectCustomer(c.id)}
+                            onChange={() => !isDisabled && toggleSelectCustomer(c.id)}
                             className={`w-4 h-4 rounded transition-all ${
-                              isSent
+                              isDisabled
                                 ? 'opacity-40 cursor-not-allowed bg-gray-200 accent-gray-400'
                                 : 'text-emerald-600 cursor-pointer'
                             }`}
                             title={
                               isSent
                                 ? 'Campaign message already delivered to this client. Checkbox is locked to prevent duplicate messages.'
+                                : invalidReason
+                                ? `Invalid Contact Number: ${invalidReason}`
                                 : 'Select customer for campaign'
                             }
                           />
                           <div>
-                            <div className="font-bold text-gray-900 flex items-center gap-2">
+                            <div className="font-bold text-gray-900 flex items-center gap-2 flex-wrap">
                               <span>{c.name}</span>
                               <span className="text-[10px] font-semibold text-gray-500">
                                 ({c.contact})
                               </span>
-                              {isSent && (
+                              {isSent ? (
                                 <span className="px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[9px] border border-emerald-300 flex items-center gap-0.5">
                                   <span>✓</span> Sent (Protected)
                                 </span>
-                              )}
+                              ) : invalidReason ? (
+                                <span
+                                  className="px-1.5 py-0.2 rounded-full bg-amber-100 text-amber-900 font-bold text-[9px] border border-amber-300 flex items-center gap-0.5"
+                                  title={`UltraMsg: ${invalidReason}`}
+                                >
+                                  <span>⚠️</span> Invalid Number
+                                </span>
+                              ) : unsentReason ? (
+                                <span
+                                  className="px-1.5 py-0.2 rounded-full bg-rose-100 text-rose-900 font-bold text-[9px] border border-rose-300 flex items-center gap-0.5"
+                                  title={`UltraMsg: ${unsentReason}`}
+                                >
+                                  <span>⚠️</span> Unsent / Failed
+                                </span>
+                              ) : null}
                             </div>
                             <div className="text-[11px] text-gray-500 flex items-center gap-1.5 mt-0.5">
                               <span className="px-1.5 py-0.2 rounded-md bg-gray-100 text-gray-700 font-semibold text-[10px]">
@@ -689,18 +845,33 @@ export default function CampaignModal({ isOpen, onClose }: CampaignModalProps) {
           <div className="flex items-center gap-2">
             <button
               onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-gray-600 hover:text-gray-800 rounded-lg transition-colors cursor-pointer"
+              disabled={sending}
+              className="px-4 py-2 text-xs font-semibold text-gray-600 hover:text-gray-800 rounded-lg transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Close
             </button>
-            <button
-              onClick={() => handleSendCampaign(true)}
-              disabled={sending || selectedIds.size === 0}
-              className="px-3.5 py-2.5 text-xs font-bold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 rounded-xl transition-all cursor-pointer disabled:opacity-50"
-              title="Test sends to only the first selected customer"
-            >
-              🧪 Test Send 1 Contact
-            </button>
+            {sending && (
+              <button
+                type="button"
+                onClick={() => {
+                  stopRequestedRef.current = true
+                }}
+                className="px-3.5 py-2.5 text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-300 rounded-xl transition-all cursor-pointer shadow-2xs flex items-center gap-1.5"
+                title="Pause campaign dispatch. All contacts already delivered will remain locked and protected."
+              >
+                <span>🛑</span> Stop Sending
+              </button>
+            )}
+            {!sending && (
+              <button
+                onClick={() => handleSendCampaign(true)}
+                disabled={sending || selectedIds.size === 0}
+                className="px-3.5 py-2.5 text-xs font-bold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 rounded-xl transition-all cursor-pointer disabled:opacity-50"
+                title="Test sends to only the first selected customer"
+              >
+                🧪 Test Send 1 Contact
+              </button>
+            )}
             <button
               onClick={() => handleSendCampaign(false)}
               disabled={sending || selectedIds.size === 0}

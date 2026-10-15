@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { mockCustomers } from '@/lib/mockData'
 import { segmentCustomers, buildTargetedMessage, SEGMENT_DEFINITIONS, ServiceSegmentType } from '@/lib/campaignAdvisor'
-import { sendWhatsAppMessage, sendWhatsAppImage } from '@/lib/ultramsg'
+import { sendWhatsAppMessage, sendWhatsAppImage, getUltraMsgMessageHistory } from '@/lib/ultramsg'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,7 +27,11 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const segmentParam = searchParams.get('segment') as ServiceSegmentType | null
 
-    const customers = await getAllCustomers()
+    const [customers, ultraHistory] = await Promise.all([
+      getAllCustomers(),
+      getUltraMsgMessageHistory(100),
+    ])
+
     const { allSegmented, segments, summary } = segmentCustomers(customers)
 
     const filtered =
@@ -42,6 +46,7 @@ export async function GET(request: NextRequest) {
       segmentsSummary: summary,
       definitions: SEGMENT_DEFINITIONS,
       customers: filtered,
+      ultraHistory,
     })
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : 'Failed to fetch campaign segments'
