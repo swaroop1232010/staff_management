@@ -21,20 +21,16 @@ interface SegmentCustomer {
   personalizedMessage: string
 }
 
-const DEFAULT_BEAUTY_COMBO_OFFER = `✨ *Special Beauty Combos at Swasthik Salon & Boutique!* ✨
+const DEFAULT_BEAUTY_COMBO_OFFER = `🎉 *Special Beauty Combos Now Available!*
+✨ Starting from just *₹99 to ₹999!* 🌸
 
-Pamper yourself with amazing beauty combos starting from just ₹99 to ₹999! ❤️
+📍 *Visit Us:* *${SALON_CONFIG.name}*
+${SALON_CONFIG.addressMedium}
 
-Threading, waxing, facials, manicure, pedicure & much more — choose your favourite combo according to your budget!
+📸 *Instagram:*
+${SALON_CONFIG.instagramUrl}
 
-💖 Visit us and treat yourself to the beauty you deserve!
-
-📍 14th Cross Road, Ravindra Nagar, Near DMart, Magunta Layout, Nellore.
-
-👉 *Visit our Instagram:*
-https://instagram.com/swasthik_makeover_nellore
-
-👉 Reply *"BOOK"* or call 9110365226 to reserve your slot!`
+📲 Call *${SALON_CONFIG.bookingPhone}* or Reply *BOOK* to grab your favourite combo! 💕`
 
 export default function CampaignModal({ isOpen, onClose }: CampaignModalProps) {
   const [loading, setLoading] = useState(false)
@@ -43,6 +39,7 @@ export default function CampaignModal({ isOpen, onClose }: CampaignModalProps) {
   const [summary, setSummary] = useState<Record<string, number>>({})
   const [selectedSegment, setSelectedSegment] = useState<string>('all')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [sentCustomerIds, setSentCustomerIds] = useState<Set<string>>(new Set())
   const [previewCustomer, setPreviewCustomer] = useState<SegmentCustomer | null>(null)
   const [customOfferText, setCustomOfferText] = useState(DEFAULT_BEAUTY_COMBO_OFFER)
   const [imageUrl, setImageUrl] = useState('')
@@ -50,13 +47,40 @@ export default function CampaignModal({ isOpen, onClose }: CampaignModalProps) {
   const [results, setResults] = useState<any[] | null>(null)
   const [alert, setAlert] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
 
+  // Load previously messaged customer IDs from localStorage to avoid sending duplicates
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('swasthik_campaign_sent_ids')
+        if (stored) {
+          const parsed = JSON.parse(stored)
+          if (Array.isArray(parsed)) {
+            setSentCustomerIds(new Set(parsed))
+          }
+        }
+      } catch (e) {
+        console.warn('Error reading swasthik_campaign_sent_ids from localStorage', e)
+      }
+    }
+  }, [isOpen])
+
+  const isCustomerSent = useCallback(
+    (c: SegmentCustomer) => {
+      const cleanPhone = c.contact ? c.contact.replace(/\D/g, '') : ''
+      return sentCustomerIds.has(c.id) || (cleanPhone ? sentCustomerIds.has(cleanPhone) : false)
+    },
+    [sentCustomerIds]
+  )
+
   const getCustomerFinalMessage = (c: SegmentCustomer) => {
     const text = customOfferText.trim()
-    const hasFooter = text.includes('📍') || text.includes('Ravindra Nagar') || text.includes('9110365226')
-    if (hasFooter) {
-      return `Hi ${c.firstName} 👋\n\n${text}`
+    if (text.includes('{{Name}}')) {
+      return text.replace(/\*?\{\{Name\}\}\*?/g, `*${c.firstName}*`)
     }
-    return `Hi ${c.firstName} 👋\n\n${text}\n\n📍 *${SALON_CONFIG.brandName}*\n${SALON_CONFIG.addressShort}\n👉 *Visit our Instagram:* ${SALON_CONFIG.instagramUrl}\n👉 Reply *"BOOK"* or call 9110365226 to reserve your slot!`
+    if (text.startsWith('Hi ')) {
+      return text
+    }
+    return `Hi *${c.firstName}* 👋💖\n\n${text}`
   }
 
   const fetchCampaignData = useCallback(async (segment: string) => {
@@ -67,12 +91,33 @@ export default function CampaignModal({ isOpen, onClose }: CampaignModalProps) {
       const res = await fetch(url)
       const data = await res.json()
       if (data.success) {
-        setCustomers(data.customers || [])
+        const loadedCustomers: SegmentCustomer[] = data.customers || []
+        setCustomers(loadedCustomers)
         setSummary(data.segmentsSummary || {})
-        // Auto-select all filtered customers by default
-        setSelectedIds(new Set((data.customers || []).map((c: any) => c.id)))
-        if (data.customers && data.customers.length > 0) {
-          setPreviewCustomer(data.customers[0])
+
+        // Read currently stored sent IDs
+        let currentSent = new Set<string>()
+        if (typeof window !== 'undefined') {
+          try {
+            const stored = localStorage.getItem('swasthik_campaign_sent_ids')
+            if (stored) {
+              const parsed = JSON.parse(stored)
+              if (Array.isArray(parsed)) currentSent = new Set(parsed)
+            }
+          } catch {
+            // ignore
+          }
+        }
+
+        // Auto-select only the first 10 eligible unsent customers instead of mass-selecting all
+        const unsent = loadedCustomers.filter((c) => {
+          const clean = c.contact ? c.contact.replace(/\D/g, '') : ''
+          return !currentSent.has(c.id) && (!clean || !currentSent.has(clean))
+        })
+        setSelectedIds(new Set(unsent.slice(0, 10).map((c) => c.id)))
+
+        if (loadedCustomers.length > 0) {
+          setPreviewCustomer(loadedCustomers[0])
         }
       } else {
         setAlert({ type: 'error', message: data.error || 'Failed to load campaign contacts' })
@@ -93,6 +138,9 @@ export default function CampaignModal({ isOpen, onClose }: CampaignModalProps) {
   }, [isOpen, selectedSegment, fetchCampaignData])
 
   const toggleSelectCustomer = (id: string) => {
+    const c = customers.find((item) => item.id === id)
+    if (c && isCustomerSent(c)) return // Readonly: cannot toggle already sent customers
+
     const next = new Set(selectedIds)
     if (next.has(id)) {
       next.delete(id)
@@ -102,17 +150,56 @@ export default function CampaignModal({ isOpen, onClose }: CampaignModalProps) {
     setSelectedIds(next)
   }
 
+  // Batch selection helpers: select first 10, 50, all unsent, or clear
+  const handleSelectBatch = (count: number) => {
+    const unsent = customers.filter((c) => !isCustomerSent(c))
+    const batch = unsent.slice(0, count).map((c) => c.id)
+    setSelectedIds(new Set(batch))
+  }
+
+  const handleSelectAllUnsent = () => {
+    const unsent = customers.filter((c) => !isCustomerSent(c))
+    setSelectedIds(new Set(unsent.map((c) => c.id)))
+  }
+
+  const handleClearSelection = () => {
+    setSelectedIds(new Set())
+  }
+
+  const handleResetSentHistory = () => {
+    if (
+      window.confirm(
+        'Reset campaign sent history? This will unlock checkboxes for previously messaged clients in future campaigns.'
+      )
+    ) {
+      try {
+        localStorage.removeItem('swasthik_campaign_sent_ids')
+        setSentCustomerIds(new Set())
+        setAlert({
+          type: 'success',
+          message: 'Campaign sent history has been reset. All customers are now available.',
+        })
+      } catch (e) {
+        console.warn(e)
+      }
+    }
+  }
+
+  const unsentCustomers = customers.filter((c) => !isCustomerSent(c))
+  const allUnsentSelected =
+    unsentCustomers.length > 0 && unsentCustomers.every((c) => selectedIds.has(c.id))
+
   const toggleSelectAll = () => {
-    if (selectedIds.size === customers.length) {
+    if (allUnsentSelected) {
       setSelectedIds(new Set())
     } else {
-      setSelectedIds(new Set(customers.map((c) => c.id)))
+      setSelectedIds(new Set(unsentCustomers.map((c) => c.id)))
     }
   }
 
   const handleSendCampaign = async (testOnly = false) => {
     const targets = customers
-      .filter((c) => selectedIds.has(c.id))
+      .filter((c) => selectedIds.has(c.id) && !isCustomerSent(c))
       .map((c) => ({
         id: c.id,
         name: c.name,
@@ -121,7 +208,10 @@ export default function CampaignModal({ isOpen, onClose }: CampaignModalProps) {
       }))
 
     if (targets.length === 0) {
-      setAlert({ type: 'error', message: 'Please select at least 1 customer to send the campaign to.' })
+      setAlert({
+        type: 'error',
+        message: 'Please select at least 1 unsent customer to send the campaign to.',
+      })
       return
     }
 
@@ -145,11 +235,49 @@ export default function CampaignModal({ isOpen, onClose }: CampaignModalProps) {
       const data = await res.json()
       if (data.success) {
         setResults(data.results || [])
+
+        // Save successfully messaged customer IDs & phone numbers to prevent duplicate sends
+        const newlySent: string[] = []
+        if (Array.isArray(data.results)) {
+          data.results.forEach((r: any) => {
+            if (r.success) {
+              if (r.id) newlySent.push(r.id)
+              if (r.contact) newlySent.push(r.contact.replace(/\D/g, ''))
+            }
+          })
+        } else {
+          sendList.forEach((c) => {
+            newlySent.push(c.id)
+            if (c.contact) newlySent.push(c.contact.replace(/\D/g, ''))
+          })
+        }
+
+        setSentCustomerIds((prev) => {
+          const updated = new Set(prev)
+          newlySent.forEach((id) => updated.add(id))
+          try {
+            localStorage.setItem(
+              'swasthik_campaign_sent_ids',
+              JSON.stringify(Array.from(updated))
+            )
+          } catch (e) {
+            console.warn(e)
+          }
+          return updated
+        })
+
+        // Uncheck sent customers so they can't be selected again
+        setSelectedIds((prev) => {
+          const next = new Set(prev)
+          newlySent.forEach((id) => next.delete(id))
+          return next
+        })
+
         setAlert({
           type: 'success',
           message: testOnly
             ? `✅ Test campaign message sent successfully to ${sendList[0]?.name} (${sendList[0]?.contact})!`
-            : `🎉 Campaign delivered to ${data.sentCount} customers successfully! (${data.failedCount} failed)`,
+            : `🎉 Campaign delivered to ${data.sentCount} customers successfully! Checkboxes are now locked for messaged clients.`,
         })
       } else {
         setAlert({ type: 'error', message: data.error || 'Failed sending campaign via UltraMsg' })
@@ -276,7 +404,7 @@ export default function CampaignModal({ isOpen, onClose }: CampaignModalProps) {
                   <span>📢</span> Campaign Broadcast Message (Sent to all selected clients)
                 </h4>
                 <p className="text-[11px] text-emerald-800 mt-0.5">
-                  Every selected client will receive this message with their name (*Hi Client_Name 👋*).
+                  Every selected client will receive this message with their bolded name (e.g. *Hi \*Client_Name\* 👋💖*).
                 </p>
               </div>
               <button
@@ -328,21 +456,75 @@ export default function CampaignModal({ isOpen, onClose }: CampaignModalProps) {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
             {/* Left: Recipients Selection Table (7 cols) */}
             <div className="lg:col-span-7 bg-white rounded-xl border border-gray-200 overflow-hidden flex flex-col">
-              <div className="p-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+              {/* Batch Action & Selection Header */}
+              <div className="p-3 bg-gray-50 border-b border-gray-200 flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <input
                     type="checkbox"
-                    checked={customers.length > 0 && selectedIds.size === customers.length}
+                    checked={unsentCustomers.length > 0 && allUnsentSelected}
+                    disabled={unsentCustomers.length === 0}
                     onChange={toggleSelectAll}
-                    className="w-4 h-4 rounded text-emerald-600 cursor-pointer"
+                    className="w-4 h-4 rounded text-emerald-600 cursor-pointer disabled:opacity-40"
+                    title={
+                      unsentCustomers.length === 0
+                        ? 'All clients in this segment have already received the campaign'
+                        : 'Select / Deselect all unsent clients'
+                    }
                   />
                   <span className="text-xs font-bold text-gray-700">
-                    Selected ({selectedIds.size} of {customers.length})
+                    Selected ({selectedIds.size} of {unsentCustomers.length} unsent)
                   </span>
                 </div>
-                <span className="text-[11px] text-gray-500">
-                  Click customer to view message
-                </span>
+
+                {/* Batch quick-selection filter buttons (10, 50, all unsent, clear) */}
+                <div className="flex items-center gap-1.5 text-xs">
+                  <span className="text-[11px] font-bold text-gray-400 mr-0.5">Select:</span>
+                  <button
+                    type="button"
+                    onClick={() => handleSelectBatch(10)}
+                    disabled={unsentCustomers.length === 0}
+                    className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-300 transition-colors shadow-2xs cursor-pointer disabled:opacity-40"
+                    title="Quick check first 10 unsent customers"
+                  >
+                    10 Clients
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSelectBatch(50)}
+                    disabled={unsentCustomers.length === 0}
+                    className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-300 transition-colors shadow-2xs cursor-pointer disabled:opacity-40"
+                    title="Quick check first 50 unsent customers"
+                  >
+                    50 Clients
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSelectAllUnsent}
+                    disabled={unsentCustomers.length === 0}
+                    className="px-2 py-1 text-[11px] font-medium rounded-lg bg-white text-gray-700 hover:bg-gray-100 border border-gray-200 transition-colors cursor-pointer disabled:opacity-40"
+                    title="Check all unsent customers"
+                  >
+                    All
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleClearSelection}
+                    className="px-2 py-1 text-[11px] font-medium rounded-lg bg-white text-gray-500 hover:bg-gray-100 border border-gray-200 transition-colors cursor-pointer"
+                    title="Clear selected checkmarks"
+                  >
+                    Clear
+                  </button>
+                  {sentCustomerIds.size > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleResetSentHistory}
+                      className="text-[10px] text-gray-400 hover:text-rose-600 underline ml-1 cursor-pointer"
+                      title="Reset sent message history to unlock checkboxes"
+                    >
+                      Reset Sent Log
+                    </button>
+                  )}
+                </div>
               </div>
 
               {loading ? (
@@ -356,7 +538,8 @@ export default function CampaignModal({ isOpen, onClose }: CampaignModalProps) {
               ) : (
                 <div className="divide-y divide-gray-100 max-h-72 overflow-y-auto">
                   {customers.map((c) => {
-                    const isSelected = selectedIds.has(c.id)
+                    const isSent = isCustomerSent(c)
+                    const isSelected = selectedIds.has(c.id) && !isSent
                     const isPreviewed = previewCustomer?.id === c.id
 
                     return (
@@ -364,16 +547,30 @@ export default function CampaignModal({ isOpen, onClose }: CampaignModalProps) {
                         key={c.id}
                         onClick={() => setPreviewCustomer(c)}
                         className={`p-3 flex items-center justify-between text-xs transition-colors cursor-pointer ${
-                          isPreviewed ? 'bg-emerald-50/80' : 'hover:bg-gray-50'
+                          isPreviewed
+                            ? 'bg-emerald-50/80'
+                            : isSent
+                            ? 'bg-gray-50/70 opacity-80'
+                            : 'hover:bg-gray-50'
                         }`}
                       >
                         <div className="flex items-center gap-3">
                           <input
                             type="checkbox"
                             checked={isSelected}
+                            disabled={isSent}
                             onClick={(e) => e.stopPropagation()}
-                            onChange={() => toggleSelectCustomer(c.id)}
-                            className="w-4 h-4 rounded text-emerald-600 cursor-pointer"
+                            onChange={() => !isSent && toggleSelectCustomer(c.id)}
+                            className={`w-4 h-4 rounded transition-all ${
+                              isSent
+                                ? 'opacity-40 cursor-not-allowed bg-gray-200 accent-gray-400'
+                                : 'text-emerald-600 cursor-pointer'
+                            }`}
+                            title={
+                              isSent
+                                ? 'Campaign message already delivered to this client. Checkbox is locked to prevent duplicate messages.'
+                                : 'Select customer for campaign'
+                            }
                           />
                           <div>
                             <div className="font-bold text-gray-900 flex items-center gap-2">
@@ -381,6 +578,11 @@ export default function CampaignModal({ isOpen, onClose }: CampaignModalProps) {
                               <span className="text-[10px] font-semibold text-gray-500">
                                 ({c.contact})
                               </span>
+                              {isSent && (
+                                <span className="px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[9px] border border-emerald-300 flex items-center gap-0.5">
+                                  <span>✓</span> Sent (Protected)
+                                </span>
+                              )}
                             </div>
                             <div className="text-[11px] text-gray-500 flex items-center gap-1.5 mt-0.5">
                               <span className="px-1.5 py-0.2 rounded-md bg-gray-100 text-gray-700 font-semibold text-[10px]">

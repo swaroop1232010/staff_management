@@ -31,6 +31,29 @@ interface AdminCustomerListProps {
   onEdit: (customer: Customer) => void
 }
 
+const getServiceBadgeStyle = (serviceName: string): string => {
+  const s = serviceName.toLowerCase()
+  if (s.includes('cut') || s.includes('trim') || s.includes('bangs') || s.includes('layers') || s.includes('styling')) {
+    return 'bg-rose-50 text-rose-700 border-rose-200/80'
+  }
+  if (s.includes('colour') || s.includes('color') || s.includes('spa') || s.includes('keratin') || s.includes('botox') || s.includes('smoothening') || s.includes('straightening') || s.includes('touch-up') || s.includes('streaks') || s.includes('highlights')) {
+    return 'bg-purple-50 text-purple-700 border-purple-200/80'
+  }
+  if (s.includes('facial') || s.includes('clean-up') || s.includes('cleanup') || s.includes('d-tan') || s.includes('dtan') || s.includes('bleach') || s.includes('hydra')) {
+    return 'bg-teal-50 text-teal-800 border-teal-200/80'
+  }
+  if (s.includes('eyebrow') || s.includes('threading') || s.includes('wax') || s.includes('lip') || s.includes('forehead') || s.includes('chin')) {
+    return 'bg-amber-50 text-amber-800 border-amber-200/80'
+  }
+  if (s.includes('pedicure') || s.includes('manicure') || s.includes('nail')) {
+    return 'bg-pink-50 text-pink-700 border-pink-200/80'
+  }
+  if (s.includes('makeup') || s.includes('make-up') || s.includes('bridal') || s.includes('saree') || s.includes('draping')) {
+    return 'bg-indigo-50 text-indigo-700 border-indigo-200/80'
+  }
+  return 'bg-sky-50 text-sky-800 border-sky-200/80'
+}
+
 export default function AdminCustomerList({ onEdit }: AdminCustomerListProps) {
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
@@ -555,16 +578,32 @@ export default function AdminCustomerList({ onEdit }: AdminCustomerListProps) {
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-700">
                         {customer.contact}
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="flex flex-wrap gap-1.5 max-w-xs">
-                          {services.map((service: string, index: number) => (
-                            <span
-                              key={index}
-                              className="inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-medium bg-rose-50 text-rose-800 border border-rose-200/70 shadow-2xs"
-                            >
-                              {service}
-                            </span>
-                          ))}
+                      <td className="px-6 py-3.5">
+                        <div className="flex flex-wrap items-center gap-1.5 max-w-[280px]">
+                          {services.length === 0 ? (
+                            <span className="text-xs text-gray-400">-</span>
+                          ) : (
+                            <>
+                              {services.slice(0, 3).map((service: string, idx: number) => (
+                                <span
+                                  key={idx}
+                                  className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold tracking-tight border shadow-2xs whitespace-nowrap ${getServiceBadgeStyle(
+                                    service
+                                  )}`}
+                                >
+                                  {service}
+                                </span>
+                              ))}
+                              {services.length > 3 && (
+                                <span
+                                  className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-gray-100 text-gray-700 border border-gray-200 cursor-help"
+                                  title={services.slice(3).join(', ')}
+                                >
+                                  +{services.length - 3} more
+                                </span>
+                              )}
+                            </>
+                          )}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">

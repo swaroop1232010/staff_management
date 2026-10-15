@@ -14,6 +14,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No file uploaded' }, { status: 400 })
     }
 
+    // Restrict to image uploads only
+    const mimeType = file.type || ''
+    if (mimeType && !mimeType.startsWith('image/')) {
+      return NextResponse.json({ error: 'Only image files are allowed' }, { status: 400 })
+    }
+
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
 
@@ -21,9 +27,10 @@ export async function POST(request: NextRequest) {
       // Create uploads directory if it doesn't exist
       const uploadsDir = join(process.cwd(), 'public', 'uploads')
       
-      // Generate unique filename
+      // Sanitize filename to prevent path traversal attack
+      const sanitizedName = (file.name || 'image.jpg').replace(/[^a-zA-Z0-9._-]/g, '_')
       const timestamp = Date.now()
-      const filename = `${timestamp}-${file.name}`
+      const filename = `${timestamp}-${sanitizedName}`
       const filepath = join(uploadsDir, filename)
 
       await writeFile(filepath, buffer)

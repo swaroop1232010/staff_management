@@ -1,6 +1,7 @@
 import { prisma } from './prisma'
 import { mockCustomers } from './mockData'
 import { startOfDay, endOfDay, format, isSameDay } from 'date-fns'
+import { SALON_CONFIG } from './salonConfig'
 
 export interface EodMetrics {
   dateLabel: string
@@ -78,26 +79,6 @@ export async function generateStaffManagementEodReport(
     })
   }
 
-  // If no customers found in date range and fallback is allowed (for preview)
-  if ((!customers || customers.length === 0) && allowFallback) {
-    if (hasDatabase) {
-      try {
-        const recent = await prisma.customer.findMany({
-          take: 10,
-          orderBy: { visitDate: 'desc' },
-        })
-        if (recent && recent.length > 0) {
-          customers = recent
-        } else {
-          customers = mockCustomers
-        }
-      } catch {
-        customers = mockCustomers
-      }
-    } else {
-      customers = mockCustomers
-    }
-  }
 
   // Helper to get net final amount paid after discount
   const getCustomerFinalAmount = (c: any): number => {
@@ -232,23 +213,24 @@ export async function generateStaffManagementEodReport(
 
   // Services summary (compact single line or top 3)
   const topServicesSummary =
-    topServices.length > 0
+    totalWalkins > 0 && topServices.length > 0
       ? topServices.slice(0, 3).map((s) => `${s.service} (${s.count})`).join(', ')
-      : 'None'
+      : 'None (0 visits recorded)'
 
   // Top Stylist summary
-  const topStylistSummary = topStaffMember
-    ? `${topStaffMember.staff} (Rs. ${topStaffMember.amount.toLocaleString('en-IN')})`
-    : 'Team'
+  const topStylistSummary =
+    totalWalkins > 0 && topStaffMember
+      ? `${topStaffMember.staff} (Rs. ${topStaffMember.amount.toLocaleString('en-IN')})`
+      : 'None (0 sales)'
 
   // Concise, high-impact AI growth suggestion
   const aiTomorrowOffer =
     totalWalkins > 0
       ? `Zero bookings for '${underperformingService}'. Send this broadcast by 10 AM:\n👉 *"Mid-week Glow: 20% OFF on ${underperformingService} before 3 PM!"*`
-      : `Promote an early-bird hook:\n👉 *"First 5 Walk-ins get a complimentary Hair Wash or D-Tan pack with any Haircut before 12 PM!"*`
+      : `No sales or walk-ins recorded today.\n👉 *"Send a broadcast with 20% OFF to clients to fill slots before 3 PM tomorrow!"*`
 
   // Construct ultra-clean, 5-second readable WhatsApp message
-  const formattedWhatsAppText = `🌸 *SWASTHIK SALON & BOUTIQUE*
+  const formattedWhatsAppText = `🌸 *${SALON_CONFIG.brandName}*
 📅 ${dateLabel}
 ----------------------------------------
 💰 *Rs. ${totalRevenue.toLocaleString('en-IN')}*  •  👥 *${totalWalkins} ${clientWord}*  •  🎫 *Rs. ${averageAmount.toLocaleString('en-IN')} Avg*

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { format, subDays, startOfMonth } from 'date-fns'
+import { SALON_CONFIG } from '@/lib/salonConfig'
 
 interface EodModalProps {
   isOpen: boolean
@@ -97,7 +98,7 @@ export default function EodWhatsAppModal({ isOpen, onClose }: EodModalProps) {
       if (data.success) {
         setStatusMessage({
           type: 'success',
-          text: `✅ Report sent to Owner (+91 8501020553) successfully via UltraMsg! (Message ID: ${data.messageId || 'ok'})`,
+          text: `✅ Report sent to Owner (${SALON_CONFIG.ownerPhone}) successfully via UltraMsg! (Message ID: ${data.messageId || 'ok'})`,
         })
       } else {
         setStatusMessage({
@@ -139,7 +140,7 @@ export default function EodWhatsAppModal({ isOpen, onClose }: EodModalProps) {
             <div>
               <h2 className="text-lg font-bold">Owner WhatsApp EOD Report & AI Advisory</h2>
               <p className="text-xs text-emerald-100">
-                UltraMsg Business Gateway • Direct to Owner (+91 8501020553)
+                UltraMsg Business Gateway • Direct to Owner ({SALON_CONFIG.ownerPhone})
               </p>
             </div>
           </div>
@@ -286,7 +287,7 @@ export default function EodWhatsAppModal({ isOpen, onClose }: EodModalProps) {
         {/* Footer Actions */}
         <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between gap-3">
           <p className="text-[11px] text-gray-500">
-            Recipient: <strong>+91 8501020553</strong> (Salon Owner)
+            Recipient: <strong>{SALON_CONFIG.ownerPhone}</strong> (Salon Owner)
           </p>
           <div className="flex items-center gap-2">
             <button

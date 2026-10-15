@@ -63,7 +63,7 @@ export default function DashboardPage() {
       
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
-          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6 pb-4 border-b border-gray-200/70">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 pb-4 border-b border-gray-200/70">
             <div>
               <div className="flex items-center gap-2.5">
                 <h1 className="text-2xl sm:text-3xl font-serif font-bold text-gray-900 tracking-tight">
@@ -78,20 +78,23 @@ export default function DashboardPage() {
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
-              <button
-                onClick={() => setIsCampaignModalOpen(true)}
-                className="flex items-center space-x-2 text-xs font-bold py-2.5 px-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white shadow-xs hover:shadow-md transition-all cursor-pointer"
-                title="Launch Service-Wise WhatsApp Marketing Campaigns"
-              >
-                <span>📢</span>
-                <span>WhatsApp Campaigns</span>
-              </button>
+            <div className="flex flex-wrap items-center justify-start md:justify-end gap-2 sm:gap-2.5 w-full md:w-auto">
+              {/* WhatsApp Campaigns - Only for Admin */}
+              {user?.role === 'SUPERADMIN' && (
+                <button
+                  onClick={() => setIsCampaignModalOpen(true)}
+                  className="h-10 inline-flex items-center space-x-2 text-xs font-bold px-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white shadow-xs hover:shadow-md transition-all cursor-pointer"
+                  title="Launch Service-Wise WhatsApp Marketing Campaigns (Admin Only)"
+                >
+                  <span>📢</span>
+                  <span>WhatsApp Campaigns</span>
+                </button>
+              )}
               
               <button
                 onClick={() => setIsEodModalOpen(true)}
-                className="flex items-center space-x-2 text-xs font-bold py-2.5 px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-xs hover:shadow-md transition-all cursor-pointer"
-                title="Send AI-powered End-of-Day report to Owner (+91 8501020553)"
+                className="h-10 inline-flex items-center space-x-2 text-xs font-bold px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-xs hover:shadow-md transition-all cursor-pointer"
+                title="Send AI-powered End-of-Day report to Owner"
               >
                 <span>📱</span>
                 <span>Send EOD to Owner</span>
@@ -99,22 +102,25 @@ export default function DashboardPage() {
 
               <button
                 onClick={() => router.push('/import-export')}
-                className="flex items-center space-x-1.5 text-xs font-semibold py-2.5 px-3.5 rounded-xl bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 shadow-2xs hover:shadow-xs transition-all cursor-pointer"
+                className="h-10 inline-flex items-center space-x-1.5 text-xs font-semibold px-3.5 rounded-xl bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 shadow-2xs hover:shadow-xs transition-all cursor-pointer"
                 title="Import or Export client CSV records"
               >
                 <span>⇄</span>
                 <span>Import/Export</span>
               </button>
 
+              {/* Primary Staff Action: Add Customer Button */}
               <button
                 onClick={() => setShowForm(!showForm)}
-                className="flex items-center space-x-2 text-xs sm:text-sm font-semibold py-2.5 px-4 rounded-xl text-white bg-gradient-to-r from-amber-600 via-rose-600 to-amber-700 hover:from-amber-700 hover:to-rose-700 shadow-sm hover:shadow-md transition-all cursor-pointer"
+                className="h-10 inline-flex items-center justify-center space-x-2 text-xs sm:text-sm font-bold px-4 rounded-xl text-white bg-gradient-to-r from-rose-600 via-pink-600 to-amber-600 hover:from-rose-700 hover:to-pink-700 shadow-sm hover:shadow-md ring-2 ring-rose-200 transition-all cursor-pointer transform hover:-translate-y-0.5"
+                title={showForm ? 'Return to Client Directory' : 'Record a new walk-in or service'}
               >
-                <span>{showForm ? '📋' : '✨'}</span>
-                <span>{showForm ? 'View Records' : 'Add New Customer'}</span>
+                <span className="text-sm">{showForm ? '📋' : '✨'}</span>
+                <span>{showForm ? 'View Customer Records' : '+ Add New Customer'}</span>
               </button>
             </div>
           </div>
+
 
           {showForm ? (
             <CustomerForm onSuccess={() => setShowForm(false)} />

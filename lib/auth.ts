@@ -41,11 +41,11 @@ export async function verifyJWT(token: string): Promise<AuthUser | null> {
  * Get valid credentials from secure server-side environment variables
  */
 export function getSystemUsers() {
-  const adminEmail = process.env.ADMIN_EMAIL || process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'admin@swasthik.com'
-  const adminPassword = process.env.ADMIN_PASSWORD || process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'admin123'
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@swasthik.com'
+  const adminPassword = process.env.ADMIN_PASSWORD || 'admin123'
 
-  const receptionEmail = process.env.RECEPTION_EMAIL || process.env.NEXT_PUBLIC_RECEPTION_EMAIL || 'reception@swasthik.com'
-  const receptionPassword = process.env.RECEPTION_PASSWORD || process.env.NEXT_PUBLIC_RECEPTION_PASSWORD || 'reception123'
+  const receptionEmail = process.env.RECEPTION_EMAIL || 'reception@swasthik.com'
+  const receptionPassword = process.env.RECEPTION_PASSWORD || 'reception123'
 
   return [
     {

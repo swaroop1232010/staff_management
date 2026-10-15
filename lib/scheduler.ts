@@ -6,6 +6,8 @@
  * If 0 walk-ins/leads occurred today, the automatic message is skipped.
  */
 
+import { SALON_CONFIG } from '@/lib/salonConfig'
+
 let isSchedulerRunning = false
 let lastSentDate: string | null = null
 
@@ -18,18 +20,26 @@ export function initEodScheduler() {
   setInterval(async () => {
     try {
       const now = new Date()
-      const currentHours = String(now.getHours()).padStart(2, '0')
-      const currentMinutes = String(now.getMinutes()).padStart(2, '0')
-      const currentTimeStr = `${currentHours}:${currentMinutes}`
+      // Always evaluate against Indian Standard Time (Asia/Kolkata)
+      const istTimeFormatter = new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'Asia/Kolkata',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      })
+      const istDateFormatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Kolkata',
+      })
+      const currentTimeStr = istTimeFormatter.format(now) // "21:00" at 9 PM IST
+      const todayDateStr = istDateFormatter.format(now) // "YYYY-MM-DD" in IST
 
-      // Default to 21:00 (9:00 PM) daily
+      // Default to 21:00 (9:00 PM) daily IST
       const scheduledTime = process.env.EOD_REPORT_SCHEDULED_TIME || '21:00'
-      const todayDateStr = now.toISOString().slice(0, 10)
 
       // Check if scheduled time matches and hasn't been sent today yet
       if (currentTimeStr === scheduledTime && lastSentDate !== todayDateStr) {
         lastSentDate = todayDateStr
-        console.log(`[EOD Scheduler] 9:00 PM trigger reached (${currentTimeStr}). Checking today's walk-ins/leads...`)
+        console.log(`[EOD Scheduler] 9:00 PM IST trigger reached (${currentTimeStr}). Checking today's walk-ins/leads...`)
 
         const { generateStaffManagementEodReport } = await import('./eodAdvisor')
         const { sendWhatsAppMessage } = await import('./ultramsg')
@@ -48,7 +58,7 @@ export function initEodScheduler() {
         }
 
         console.log(`[EOD Scheduler] Found ${todayReport.metrics.totalWalkins} walk-ins/leads today. Sending automatic EOD report to owner...`)
-        const ownerPhone = process.env.OWNER_WHATSAPP_NUMBER || '918501020553'
+        const ownerPhone = process.env.OWNER_WHATSAPP_NUMBER || SALON_CONFIG.ownerWhatsAppFormatted
         const result = await sendWhatsAppMessage(ownerPhone, todayReport.formattedWhatsAppText)
 
         console.log('[EOD Scheduler] Auto-dispatch result:', result)
@@ -61,13 +71,18 @@ export function initEodScheduler() {
 
 export function getSchedulerStatus() {
   const now = new Date()
-  const currentHours = String(now.getHours()).padStart(2, '0')
-  const currentMinutes = String(now.getMinutes()).padStart(2, '0')
+  const istTime = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Kolkata',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(now)
+
   return {
     running: isSchedulerRunning,
-    currentTime: `${currentHours}:${currentMinutes}`,
-    scheduledTime: process.env.EOD_REPORT_SCHEDULED_TIME || '21:00',
-    ownerPhone: process.env.OWNER_WHATSAPP_NUMBER || '918501020553',
+    currentServerTimeIST: istTime,
+    scheduledTimeIST: process.env.EOD_REPORT_SCHEDULED_TIME || '21:00',
+    ownerPhone: process.env.OWNER_WHATSAPP_NUMBER || SALON_CONFIG.ownerWhatsAppFormatted,
     lastSentDate,
     rule: 'Only sends if at least 1 walk-in/lead recorded for today',
   }

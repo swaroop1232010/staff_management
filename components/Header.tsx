@@ -140,16 +140,18 @@ export default function Header({ user, onNavigate }: HeaderProps) {
                   Reports
                 </button>
               )}
-              <button
-                onClick={() => {
-                  setIsMobileMenuOpen(false)
-                  setIsCampaignModalOpen(true)
-                }}
-                className="text-left px-4 py-2 text-blue-700 font-bold hover:bg-blue-50 rounded-md flex items-center gap-2"
-              >
-                <span>📢</span>
-                <span>Service-Wise WhatsApp Campaigns</span>
-              </button>
+              {user?.role === 'SUPERADMIN' && (
+                <button
+                  onClick={() => {
+                    setIsMobileMenuOpen(false)
+                    setIsCampaignModalOpen(true)
+                  }}
+                  className="text-left px-4 py-2 text-blue-700 font-bold hover:bg-blue-50 rounded-md flex items-center gap-2"
+                >
+                  <span>📢</span>
+                  <span>Service-Wise WhatsApp Campaigns</span>
+                </button>
+              )}
               <button
                 onClick={() => {
                   setIsMobileMenuOpen(false)

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { generateStaffManagementEodReport } from '@/lib/eodAdvisor'
 import { sendWhatsAppMessage } from '@/lib/ultramsg'
 import { initEodScheduler, getSchedulerStatus } from '@/lib/scheduler'
+import { SALON_CONFIG } from '@/lib/salonConfig'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,12 +17,12 @@ export async function GET(request: NextRequest) {
     const phoneOverride = searchParams.get('phone')
     const startDate = searchParams.get('startDate') || undefined
     const endDate = searchParams.get('endDate') || undefined
-    const allowFallback = searchParams.get('allowFallback') !== 'false'
+    const allowFallback = searchParams.get('allowFallback') === 'true'
 
     const ownerPhone =
       phoneOverride ||
       process.env.OWNER_WHATSAPP_NUMBER ||
-      '918501020553'
+      SALON_CONFIG.ownerWhatsAppFormatted
     const scheduledTime = process.env.EOD_REPORT_SCHEDULED_TIME || '21:00'
 
     const report = await generateStaffManagementEodReport({
@@ -65,11 +66,11 @@ export async function POST(request: NextRequest) {
     const ownerPhone =
       body.phone ||
       process.env.OWNER_WHATSAPP_NUMBER ||
-      '918501020553'
+      SALON_CONFIG.ownerWhatsAppFormatted
     const customMessage = body.customMessage
     const startDate = body.startDate || undefined
     const endDate = body.endDate || undefined
-    const allowFallback = body.allowFallback !== false
+    const allowFallback = body.allowFallback === true
 
     const report = await generateStaffManagementEodReport({
       startDate,

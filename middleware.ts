@@ -20,12 +20,10 @@ export async function middleware(request: NextRequest) {
 
   // 2. Protected API Routes
   if (isApiRoute) {
-    // Allow public access to auth endpoints, health check, EOD cron, and campaigns
+    // Allow public access ONLY to auth endpoints, db check, and automated cron triggers
     if (
       pathname.startsWith('/api/auth/') ||
       pathname.startsWith('/api/init-db') ||
-      pathname.startsWith('/api/reports/eod') ||
-      pathname.startsWith('/api/campaigns') ||
       pathname.startsWith('/api/cron/')
     ) {
       return NextResponse.next()
@@ -35,8 +33,11 @@ export async function middleware(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized. Please sign in.' }, { status: 401 })
     }
 
-    // Reports API is restricted to SUPERADMIN
-    if (pathname.startsWith('/api/reports') && user.role !== 'SUPERADMIN') {
+    // Reports and WhatsApp Campaigns API are restricted to SUPERADMIN
+    if (
+      (pathname.startsWith('/api/reports') || pathname.startsWith('/api/campaigns')) &&
+      user.role !== 'SUPERADMIN'
+    ) {
       return NextResponse.json({ error: 'Forbidden. Admin privileges required.' }, { status: 403 })
     }
 
@@ -69,6 +70,7 @@ export const config = {
     '/api/customers/:path*',
     '/api/staff/:path*',
     '/api/reports/:path*',
+    '/api/campaigns/:path*',
     '/api/upload/:path*',
   ],
 }

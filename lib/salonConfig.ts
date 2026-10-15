@@ -10,6 +10,7 @@ export const SALON_CONFIG = {
   
   // Official Physical Address & Geo Plus Code
   address: "14th Cross Road, Ravindra Nagar, Near DMart, Magunta Layout, Nellore, Andhra Pradesh 524003",
+  addressMedium: "14th Cross Road, Ravindra Nagar, Near DMart, Magunta Layout, Nellore.",
   addressShort: "14th Cross Rd, Ravindra Nagar, Near DMart, Nellore",
   landmark: "Near DMart, Magunta Layout",
   locality: "Ravindra Nagar, Near DMart, Magunta Layout",

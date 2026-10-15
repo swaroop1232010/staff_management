@@ -185,7 +185,7 @@ export default function ReportsPage() {
             <button
               onClick={() => setIsEodModalOpen(true)}
               className="flex items-center space-x-2 text-xs font-bold py-2 px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-sm hover:shadow-md transition-all cursor-pointer"
-              title="Send AI-powered End-of-Day report to Owner (+91 8501020553)"
+              title="Send AI-powered End-of-Day report to Owner"
             >
               <span>📱</span>
               <span>Send EOD to Owner</span>

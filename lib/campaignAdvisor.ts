@@ -155,20 +155,16 @@ export function detectPrimaryCategory(services: string[]): ServiceSegmentType {
   return 'general'
 }
 
-export const DEFAULT_CAMPAIGN_OFFER_TEXT = `✨ *Special Beauty Combos at Swasthik Salon & Boutique!* ✨
+export const DEFAULT_CAMPAIGN_OFFER_TEXT = `🎉 *Special Beauty Combos Now Available!*
+✨ Starting from just *₹99 to ₹999!* 🌸
 
-Pamper yourself with amazing beauty combos starting from just ₹99 to ₹999! ❤️
+📍 *Visit Us:* *${SALON_CONFIG.name}*
+${SALON_CONFIG.addressMedium}
 
-Threading, waxing, facials, manicure, pedicure & much more — choose your favourite combo according to your budget!
-
-💖 Visit us and treat yourself to the beauty you deserve!
-
-📍 14th Cross Road, Ravindra Nagar, Near DMart, Magunta Layout, Nellore.
-
-👉 *Visit our Instagram:*
+📸 *Instagram:*
 ${SALON_CONFIG.instagramUrl}
 
-👉 Reply *"BOOK"* or call 9110365226 to reserve your slot!`
+📲 Call *${SALON_CONFIG.bookingPhone}* or Reply *BOOK* to grab your favourite combo! 💕`
 
 /**
  * Generates tailored WhatsApp marketing copy for a customer
@@ -183,13 +179,15 @@ export function buildTargetedMessage(
     ? customOfferText.trim()
     : DEFAULT_CAMPAIGN_OFFER_TEXT
 
-  const hasFooter = messageBody.includes('📍') || messageBody.includes('Ravindra Nagar') || messageBody.includes('9110365226')
-  if (hasFooter) {
-    return `Hi ${firstName} 👋\n\n${messageBody}`
+  if (messageBody.includes('{{Name}}')) {
+    return messageBody.replace(/\*?\{\{Name\}\}\*?/g, `*${firstName}*`)
   }
 
-  const salonFooter = `📍 *${SALON_CONFIG.brandName}*\n${SALON_CONFIG.addressShort}\n👉 *Visit our Instagram:* ${SALON_CONFIG.instagramUrl}\n👉 Reply *"BOOK"* or call 9110365226 to reserve your slot!`
-  return `Hi ${firstName} 👋\n\n${messageBody}\n\n${salonFooter}`
+  if (messageBody.startsWith('Hi ')) {
+    return messageBody
+  }
+
+  return `Hi *${firstName}* 👋💖\n\n${messageBody}`
 }
 
 /**
