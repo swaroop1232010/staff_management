@@ -142,9 +142,9 @@ export async function POST(request: NextRequest) {
         })
       }
 
-      // 500ms delay between dispatches to maintain safe delivery rhythm
+      // 5 seconds safe anti-ban delay between dispatches
       if (targetList.length > 1) {
-        await new Promise((resolve) => setTimeout(resolve, 500))
+        await new Promise((resolve) => setTimeout(resolve, 5000))
       }
     }
 

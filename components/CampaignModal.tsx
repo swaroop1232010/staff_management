@@ -32,6 +32,15 @@ ${SALON_CONFIG.instagramUrl}
 
 📲 Call *${SALON_CONFIG.bookingPhone}* or Reply *BOOK* to grab your favourite combo! 💕`
 
+function getCleanPhone(c: SegmentCustomer): string {
+  return c.contact ? c.contact.replace(/\D/g, '') : ''
+}
+
+function getTenDigit(c: SegmentCustomer): string {
+  const clean = getCleanPhone(c)
+  return clean.length >= 10 ? clean.slice(-10) : clean
+}
+
 export default function CampaignModal({ isOpen, onClose }: CampaignModalProps) {
   const [loading, setLoading] = useState(false)
   const [sending, setSending] = useState(false)
@@ -66,12 +75,6 @@ export default function CampaignModal({ isOpen, onClose }: CampaignModalProps) {
       }
     }
   }, [isOpen])
-
-  const getCleanPhone = (c: SegmentCustomer) => (c.contact ? c.contact.replace(/\D/g, '') : '')
-  const getTenDigit = (c: SegmentCustomer) => {
-    const clean = getCleanPhone(c)
-    return clean.length >= 10 ? clean.slice(-10) : clean
-  }
 
   const isCustomerSent = useCallback(
     (c: SegmentCustomer) => {
@@ -266,6 +269,12 @@ export default function CampaignModal({ isOpen, onClose }: CampaignModalProps) {
   }
 
   const unsentCustomers = customers.filter((c) => !isCustomerSent(c))
+  const sentCount = customers.filter((c) => isCustomerSent(c)).length
+  const invalidCount = customers.filter((c) => !isCustomerSent(c) && getCustomerInvalidReason(c)).length
+  const unsentCount = customers.filter(
+    (c) => !isCustomerSent(c) && !getCustomerInvalidReason(c) && getCustomerUnsentReason(c)
+  ).length
+
   const allEligibleSelected =
     eligibleCustomers.length > 0 && eligibleCustomers.every((c) => selectedIds.has(c.id))
 
@@ -398,9 +407,10 @@ export default function CampaignModal({ isOpen, onClose }: CampaignModalProps) {
           setUnsentPhoneMap((prev) => new Map(prev).set(tenDigit, itemErr?.message || 'Network error'))
         }
 
-        // Pacing delay (500ms) between dispatches to maintain safe delivery rhythm & avoid rate-limits
+        // Anti-ban protection delay: 5 seconds (5,000ms - 5,500ms) between messages
         if (i < sendList.length - 1 && !stopRequestedRef.current) {
-          await new Promise((resolve) => setTimeout(resolve, 500))
+          const safeDelay = 5000 + Math.floor(Math.random() * 500)
+          await new Promise((resolve) => setTimeout(resolve, safeDelay))
         }
       }
 
@@ -590,7 +600,7 @@ export default function CampaignModal({ isOpen, onClose }: CampaignModalProps) {
             <div className="lg:col-span-7 bg-white rounded-xl border border-gray-200 overflow-hidden flex flex-col">
               {/* Batch Action & Selection Header */}
               <div className="p-3 bg-gray-50 border-b border-gray-200 flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <input
                     type="checkbox"
                     checked={eligibleCustomers.length > 0 && allEligibleSelected}
@@ -603,9 +613,36 @@ export default function CampaignModal({ isOpen, onClose }: CampaignModalProps) {
                         : 'Select / Deselect all eligible clients'
                     }
                   />
-                  <span className="text-xs font-bold text-gray-700">
-                    Selected ({selectedIds.size} of {eligibleCustomers.length} eligible)
-                  </span>
+                  <div className="flex items-center gap-2 flex-wrap text-xs font-bold text-gray-700">
+                    <span>
+                      Selected (<strong className="text-emerald-700 font-extrabold">{selectedIds.size}</strong> of {eligibleCustomers.length} eligible)
+                    </span>
+                    <span className="text-gray-300">|</span>
+                    <div className="flex items-center gap-1.5 text-[10px] font-bold">
+                      <span
+                        className="px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-0.5 shadow-2xs"
+                        title="Clients delivered via UltraMsg (checkbox locked)"
+                      >
+                        <span>✓</span> {sentCount} Sent
+                      </span>
+                      {invalidCount > 0 && (
+                        <span
+                          className="px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-0.5 shadow-2xs"
+                          title="Invalid phone number or not on WhatsApp"
+                        >
+                          <span>⚠️</span> {invalidCount} Invalid
+                        </span>
+                      )}
+                      {unsentCount > 0 && (
+                        <span
+                          className="px-1.5 py-0.5 rounded-md bg-rose-100 text-rose-900 border border-rose-300 flex items-center gap-0.5 shadow-2xs"
+                          title="Failed delivery in UltraMsg (can be retried)"
+                        >
+                          <span>⚠️</span> {unsentCount} Unsent
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
                 {/* Batch quick-selection filter buttons (10, 50, all unsent, clear) */}
@@ -839,8 +876,11 @@ export default function CampaignModal({ isOpen, onClose }: CampaignModalProps) {
 
         {/* Footer Actions */}
         <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between gap-3">
-          <p className="text-[11px] text-gray-500">
-            Messages are paced safely (500ms delay) from your business WhatsApp gateway.
+          <p className="text-[11px] text-emerald-800 font-semibold flex items-center gap-1.5">
+            <span>🛡️ Anti-Ban Protection Active:</span>
+            <span className="font-normal text-gray-600">
+              5s human-paced delay between dispatches keeps your WhatsApp number safe from spam blocks.
+            </span>
           </p>
           <div className="flex items-center gap-2">
             <button
@@ -881,7 +921,7 @@ export default function CampaignModal({ isOpen, onClose }: CampaignModalProps) {
                 <>
                   <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   <span>
-                    Sending {progress ? `${progress.current}/${progress.total}` : 'Campaign'}...
+                    Sending {progress ? `${progress.current}/${progress.total} (Paced 5s)` : 'Campaign'}...
                   </span>
                 </>
               ) : (
