@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { mockCustomers } from '@/lib/mockData'
 import { segmentCustomers, buildTargetedMessage, SEGMENT_DEFINITIONS, ServiceSegmentType } from '@/lib/campaignAdvisor'
 import { sendWhatsAppMessage, sendWhatsAppImage, getUltraMsgMessageHistory } from '@/lib/ultramsg'
+import { getDbSentContacts, recordDbCampaignSent, clearDbCampaignHistory } from '@/lib/campaignDb'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,9 +28,10 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const segmentParam = searchParams.get('segment') as ServiceSegmentType | null
 
-    const [customers, ultraHistory] = await Promise.all([
+    const [customers, ultraHistory, dbSent] = await Promise.all([
       getAllCustomers(),
       getUltraMsgMessageHistory(100),
+      getDbSentContacts(),
     ])
 
     const { allSegmented, segments, summary } = segmentCustomers(customers)
@@ -39,6 +41,9 @@ export async function GET(request: NextRequest) {
         ? segments[segmentParam]
         : allSegmented
 
+    // Combine UltraMsg gateway history with PostgreSQL permanent history
+    const combinedSent = Array.from(new Set([...(ultraHistory?.sent || []), ...dbSent]))
+
     return NextResponse.json({
       success: true,
       totalCustomers: customers.length,
@@ -46,7 +51,12 @@ export async function GET(request: NextRequest) {
       segmentsSummary: summary,
       definitions: SEGMENT_DEFINITIONS,
       customers: filtered,
-      ultraHistory,
+      ultraHistory: {
+        sent: combinedSent,
+        invalid: ultraHistory?.invalid || [],
+        unsent: ultraHistory?.unsent || [],
+      },
+      dbSentCount: dbSent.length,
     })
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : 'Failed to fetch campaign segments'
@@ -131,6 +141,8 @@ export async function POST(request: NextRequest) {
           success: true,
           messageId: res.messageId,
         })
+        // Permanently record in PostgreSQL database across UltraMsg instances
+        await recordDbCampaignSent(recipient.contact, recipient.id, recipient.name, res.messageId)
       } else {
         failedCount++
         results.push({
@@ -157,6 +169,19 @@ export async function POST(request: NextRequest) {
     })
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : 'Campaign dispatch failed'
+    return NextResponse.json({ success: false, error: msg }, { status: 500 })
+  }
+}
+
+export async function DELETE() {
+  try {
+    await clearDbCampaignHistory()
+    return NextResponse.json({
+      success: true,
+      message: 'Campaign sent history successfully cleared from database',
+    })
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : 'Failed to clear campaign history'
     return NextResponse.json({ success: false, error: msg }, { status: 500 })
   }
 }

@@ -249,7 +249,7 @@ export default function CampaignModal({ isOpen, onClose }: CampaignModalProps) {
     setSelectedIds(new Set())
   }
 
-  const handleResetSentHistory = () => {
+  const handleResetSentHistory = async () => {
     if (
       window.confirm(
         'Reset campaign sent history? This will unlock checkboxes for previously messaged clients in future campaigns.'
@@ -258,10 +258,12 @@ export default function CampaignModal({ isOpen, onClose }: CampaignModalProps) {
       try {
         localStorage.removeItem('swasthik_campaign_sent_ids')
         setSentCustomerIds(new Set())
+        await fetch('/api/campaigns/send', { method: 'DELETE' })
         setAlert({
           type: 'success',
           message: 'Campaign sent history has been reset. All customers are now available.',
         })
+        fetchCampaignData(selectedSegment)
       } catch (e) {
         console.warn(e)
       }
